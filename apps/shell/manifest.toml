@@ -1,0 +1,20 @@
+[app]
+slug = "shell"
+name = "ZRO Shell Desktop"
+version = "0.1.0"
+description = "Desktop Window Manager — fenêtres, taskbar, lanceur d'apps"
+
+[backend]
+executable = "zro-app-shell"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]
+
+[permissions.capabilities]
+manage_windows = true
+list_apps = true

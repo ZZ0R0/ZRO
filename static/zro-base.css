@@ -1,0 +1,90 @@
+/* zro-base.css — Shared CSS variables for consistent theming */
+:root {
+    /* Colors */
+    --zro-bg-primary: #1e1e2e;
+    --zro-bg-secondary: #313244;
+    --zro-bg-surface: #45475a;
+    --zro-text-primary: #cdd6f4;
+    --zro-text-secondary: #a6adc8;
+    --zro-accent: #89b4fa;
+    --zro-accent-hover: #74c7ec;
+    --zro-error: #f38ba8;
+    --zro-success: #a6e3a1;
+    --zro-warning: #f9e2af;
+
+    /* Spacing */
+    --zro-space-xs: 4px;
+    --zro-space-sm: 8px;
+    --zro-space-md: 16px;
+    --zro-space-lg: 24px;
+    --zro-space-xl: 32px;
+
+    /* Typography */
+    --zro-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --zro-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --zro-font-size-sm: 0.875rem;
+    --zro-font-size-md: 1rem;
+    --zro-font-size-lg: 1.25rem;
+
+    /* Borders */
+    --zro-radius-sm: 4px;
+    --zro-radius-md: 8px;
+    --zro-radius-lg: 12px;
+
+    /* Shadows */
+    --zro-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --zro-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--zro-font-sans);
+    background: var(--zro-bg-primary);
+    color: var(--zro-text-primary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--zro-accent); text-decoration: none; }
+a:hover { color: var(--zro-accent-hover); }
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: var(--zro-radius-sm);
+    padding: var(--zro-space-sm) var(--zro-space-md);
+    font-size: var(--zro-font-size-sm);
+    background: var(--zro-accent);
+    color: var(--zro-bg-primary);
+    transition: background 0.2s;
+}
+
+button:hover { background: var(--zro-accent-hover); }
+
+input, textarea {
+    font-family: inherit;
+    border: 1px solid var(--zro-bg-surface);
+    border-radius: var(--zro-radius-sm);
+    padding: var(--zro-space-sm);
+    font-size: var(--zro-font-size-md);
+    background: var(--zro-bg-secondary);
+    color: var(--zro-text-primary);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input:focus, textarea:focus {
+    border-color: var(--zro-accent);
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--zro-bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--zro-bg-surface); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--zro-text-secondary); }

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css">
+    <link rel="stylesheet" href="/tasks/static/app.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header bar -->
+        <header id="app-header">
+            <div class="header-left">
+                <h1>📋 Tasks</h1>
+                <span class="connection-badge" id="conn-badge">Connecting…</span>
+            </div>
+            <div class="header-right">
+                <button id="btn-add" class="btn-primary">+ Nouvelle tâche</button>
+                <button id="btn-filter" class="btn-ghost" title="Filtrer">⚙</button>
+            </div>
+        </header>
+
+        <!-- Filter bar (toggled) -->
+        <div id="filter-bar" class="hidden">
+            <div class="filter-group">
+                <label>Catégorie</label>
+                <select id="filter-category">
+                    <option value="">Toutes</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Priorité</label>
+                <select id="filter-priority">
+                    <option value="">Toutes</option>
+                    <option value="urgent">🔴 Urgente</option>
+                    <option value="high">🟠 Haute</option>
+                    <option value="medium">🟡 Moyenne</option>
+                    <option value="low">🟢 Basse</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Recherche</label>
+                <input type="text" id="filter-search" placeholder="Rechercher…">
+            </div>
+        </div>
+
+        <!-- Kanban board -->
+        <div id="kanban">
+            <div class="kanban-column" data-status="todo">
+                <div class="column-header">
+                    <span class="column-title">📝 À faire</span>
+                    <span class="column-count" id="count-todo">0</span>
+                </div>
+                <div class="column-body" id="col-todo"></div>
+            </div>
+            <div class="kanban-column" data-status="in_progress">
+                <div class="column-header">
+                    <span class="column-title">🔧 En cours</span>
+                    <span class="column-count" id="count-in_progress">0</span>
+                </div>
+                <div class="column-body" id="col-in_progress"></div>
+            </div>
+            <div class="kanban-column" data-status="done">
+                <div class="column-header">
+                    <span class="column-title">✅ Terminé</span>
+                    <span class="column-count" id="count-done">0</span>
+                </div>
+                <div class="column-body" id="col-done"></div>
+            </div>
+        </div>
+
+        <!-- Task modal -->
+        <div id="modal-overlay" class="hidden">
+            <div id="task-modal">
+                <div class="modal-header">
+                    <h2 id="modal-title">Nouvelle tâche</h2>
+                    <button id="modal-close" class="btn-ghost">✕</button>
+                </div>
+                <form id="task-form">
+                    <input type="hidden" id="task-id">
+                    <div class="form-row">
+                        <label for="task-title-input">Titre</label>
+                        <input type="text" id="task-title-input" required placeholder="Que faut-il faire ?" autofocus>
+                    </div>
+                    <div class="form-row">
+                        <label for="task-desc">Description</label>
+                        <textarea id="task-desc" rows="4" placeholder="Détails supplémentaires…"></textarea>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-row">
+                            <label for="task-status">Statut</label>
+                            <select id="task-status">
+                                <option value="todo">📝 À faire</option>
+                                <option value="in_progress">🔧 En cours</option>
+                                <option value="done">✅ Terminé</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <label for="task-priority">Priorité</label>
+                            <select id="task-priority">
+                                <option value="low">🟢 Basse</option>
+                                <option value="medium" selected>🟡 Moyenne</option>
+                                <option value="high">🟠 Haute</option>
+                                <option value="urgent">🔴 Urgente</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <label for="task-category">Catégorie</label>
+                            <select id="task-category"></select>
+                        </div>
+                        <div class="form-row">
+                            <label for="task-due">Échéance</label>
+                            <input type="date" id="task-due">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="btn-delete-task" class="btn-danger hidden">Supprimer</button>
+                        <div class="flex-spacer"></div>
+                        <button type="button" id="btn-cancel" class="btn-ghost">Annuler</button>
+                        <button type="submit" class="btn-primary">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/zro-client.js"></script>
+    <script src="/tasks/static/app.js"></script>
+</body>
+</html>

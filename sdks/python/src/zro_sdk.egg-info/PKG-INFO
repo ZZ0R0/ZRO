@@ -1,0 +1,73 @@
+Metadata-Version: 2.4
+Name: zro-sdk
+Version: 0.1.0
+Summary: ZRO Application SDK for Python
+Author: ZRO Team
+License-Expression: MIT
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+
+# ZRO SDK for Python
+
+Build ZRO application backends in Python.
+
+## Installation
+
+```bash
+pip install zro-sdk
+```
+
+## Quick Start
+
+```python
+from zro_sdk import ZroApp, AppContext
+
+app = ZroApp()
+
+@app.command("greet")
+async def greet(ctx: AppContext, name: str) -> str:
+    return f"Hello, {name}!"
+
+@app.command("add")
+async def add(ctx: AppContext, a: int, b: int) -> dict:
+    return {"sum": a + b}
+
+if __name__ == "__main__":
+    app.run()
+```
+
+## Manifest
+
+```toml
+[app]
+name = "My Python App"
+slug = "myapp"
+version = "0.1.0"
+
+[app.backend]
+command = "python3"
+args = ["main.py"]
+working_dir = "."
+```
+
+## Features
+
+- Zero external dependencies (stdlib only)
+- Async/await (asyncio)
+- Auto parameter extraction from JSON
+- Session/context access
+- Event emission (targeted + broadcast)
+- Client lifecycle hooks (connected/disconnected/reconnected)
+
+## License
+
+MIT

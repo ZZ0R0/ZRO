@@ -1,0 +1,19 @@
+[app]
+slug = "terminal"
+name = "Terminal"
+version = "0.1.0"
+description = "A web terminal"
+
+[backend]
+executable = "zro-app-terminal"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin"]
+
+[permissions.capabilities]
+process_spawn = true

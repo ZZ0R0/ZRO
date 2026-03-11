@@ -1,0 +1,17 @@
+[package]
+name = "zro-app-tasks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Task manager application with Kanban board for zro"
+
+[dependencies]
+zro-sdk = { path = "../../../sdks/rust" }
+zro-protocol = { path = "../../../protocol" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }

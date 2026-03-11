@@ -1,0 +1,18 @@
+[app]
+slug = "notes"
+name = "Notes"
+version = "0.1.0"
+description = "A simple note editor"
+
+[backend]
+executable = "zro-app-notes"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]
+
+[permissions.capabilities]

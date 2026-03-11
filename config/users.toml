@@ -1,0 +1,10 @@
+# zro users file
+# Password hashes use Argon2id.
+# In dev mode, if this file is missing, a default dev/dev user is created.
+# To generate a hash, use: cargo run --example gen_hash -p zro-runtime -- <password>
+
+[[users]]
+username = "dev"
+# Argon2id hash for password "dev"
+password_hash = "$argon2id$v=19$m=19456,t=2,p=1$QWiOq6ZF60rg8B3aCABzfw$/dKyzGopPnyTv7tNXf0fNzT5+MWR5v/rwgNe09HinJ0"
+role = "admin"

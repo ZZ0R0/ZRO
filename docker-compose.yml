@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  zro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - zro-data:/opt/zro/data
+      - zro-ipc:/tmp/zro/ipc
+    environment:
+      - ZRO_CONFIG=/opt/zro/config/runtime.toml
+      - RUST_LOG=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  zro-data:
+  zro-ipc:

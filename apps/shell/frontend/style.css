@@ -1,0 +1,306 @@
+:root {
+    --zro-bg: #1a1a2e;
+    --zro-window-bg: #16213e;
+    --zro-titlebar-bg: #0f3460;
+    --zro-titlebar-active: #1a508b;
+    --zro-accent: #e94560;
+    --zro-text: #eee;
+    --zro-text-dim: #8899aa;
+    --zro-taskbar-bg: rgba(15, 52, 96, 0.92);
+    --zro-taskbar-height: 44px;
+    --zro-border: rgba(255, 255, 255, 0.08);
+    --zro-shadow: rgba(0, 0, 0, 0.4);
+    --zro-radius: 6px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--zro-bg);
+    color: var(--zro-text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+}
+
+/* ── Desktop area ─────────────────────────────────── */
+
+#desktop {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    bottom: var(--zro-taskbar-height);
+}
+
+/* ── Window ───────────────────────────────────────── */
+
+.zro-window {
+    position: absolute;
+    background: var(--zro-window-bg);
+    border-radius: var(--zro-radius);
+    box-shadow: 0 4px 24px var(--zro-shadow), 0 0 0 1px var(--zro-border);
+    display: flex;
+    flex-direction: column;
+    min-width: 320px;
+    min-height: 200px;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+}
+
+.zro-window.focused {
+    box-shadow: 0 8px 40px var(--zro-shadow), 0 0 0 1px rgba(233, 69, 96, 0.3);
+}
+
+.zro-window.maximized {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
+}
+
+.zro-window.minimized {
+    display: none;
+}
+
+/* ── Titlebar ─────────────────────────────────────── */
+
+.zro-window-titlebar {
+    display: flex;
+    align-items: center;
+    height: 34px;
+    background: var(--zro-titlebar-bg);
+    padding: 0 8px;
+    cursor: move;
+    flex-shrink: 0;
+}
+
+.zro-window.focused .zro-window-titlebar {
+    background: var(--zro-titlebar-active);
+}
+
+.zro-window-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 8px;
+}
+
+.zro-window-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.zro-window-controls button {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--zro-text-dim);
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zro-window-controls button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--zro-text);
+}
+
+.zro-window-controls .zro-close:hover {
+    background: var(--zro-accent);
+    color: white;
+}
+
+/* ── Window content (iframe) ──────────────────────── */
+
+.zro-window-content {
+    flex: 1;
+    border: none;
+    width: 100%;
+    height: 100%;
+    background: white;
+}
+
+/* ── Resize handles ───────────────────────────────── */
+
+.zro-resize {
+    position: absolute;
+}
+
+.zro-resize-n  { top: -3px; left: 6px; right: 6px; height: 6px; cursor: n-resize; }
+.zro-resize-s  { bottom: -3px; left: 6px; right: 6px; height: 6px; cursor: s-resize; }
+.zro-resize-w  { left: -3px; top: 6px; bottom: 6px; width: 6px; cursor: w-resize; }
+.zro-resize-e  { right: -3px; top: 6px; bottom: 6px; width: 6px; cursor: e-resize; }
+.zro-resize-nw { top: -3px; left: -3px; width: 12px; height: 12px; cursor: nw-resize; }
+.zro-resize-ne { top: -3px; right: -3px; width: 12px; height: 12px; cursor: ne-resize; }
+.zro-resize-sw { bottom: -3px; left: -3px; width: 12px; height: 12px; cursor: sw-resize; }
+.zro-resize-se { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: se-resize; }
+
+/* ── Taskbar ──────────────────────────────────────── */
+
+#taskbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: var(--zro-taskbar-height);
+    background: var(--zro-taskbar-bg);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 4px;
+    z-index: 10000;
+    border-top: 1px solid var(--zro-border);
+}
+
+#taskbar-apps {
+    display: flex;
+    gap: 2px;
+    flex: 1;
+    overflow-x: auto;
+}
+
+.taskbar-btn {
+    height: 34px;
+    min-width: 34px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--zro-text);
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.taskbar-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.taskbar-btn.active {
+    background: rgba(255, 255, 255, 0.15);
+    border-bottom: 2px solid var(--zro-accent);
+}
+
+.taskbar-badge {
+    background: var(--zro-accent);
+    color: white;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    margin-left: 4px;
+}
+
+#taskbar-clock {
+    font-size: 13px;
+    color: var(--zro-text-dim);
+    padding: 0 12px;
+}
+
+/* ── Launcher ─────────────────────────────────────── */
+
+#launcher {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    bottom: var(--zro-taskbar-height);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9000;
+}
+
+#launcher.hidden {
+    display: none;
+}
+
+.launcher-content {
+    background: var(--zro-window-bg);
+    border-radius: 12px;
+    padding: 2rem;
+    min-width: 400px;
+    max-width: 600px;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 40px var(--zro-shadow);
+}
+
+.launcher-content h2 {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+#launcher-apps {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.launcher-app {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.2rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s;
+}
+
+.launcher-app:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.launcher-app .app-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.launcher-app .app-desc {
+    font-size: 11px;
+    color: var(--zro-text-dim);
+}
+
+/* ── Notifications ────────────────────────────────── */
+
+#notifications {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 20000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.zro-notification {
+    background: var(--zro-window-bg);
+    border: 1px solid var(--zro-border);
+    border-radius: var(--zro-radius);
+    padding: 12px 16px;
+    max-width: 320px;
+    box-shadow: 0 4px 16px var(--zro-shadow);
+    animation: slideIn 0.2s ease-out;
+}
+
+.zro-notification .notif-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.zro-notification .notif-body {
+    font-size: 13px;
+    color: var(--zro-text-dim);
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}

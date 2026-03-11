@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Custom Shell</title>
+    <link rel="stylesheet" href="/custom-shell/static/style.css">
+</head>
+<body>
+
+    <!-- ── Desktop: windows live here ────────────────────── -->
+    <div id="desktop"></div>
+
+    <!-- ── Taskbar ───────────────────────────────────────── -->
+    <div id="taskbar">
+        <button id="launcher-btn" class="taskbar-btn" title="Applications">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                <rect x="1" y="1" width="7" height="7" rx="1.5"/>
+                <rect x="10" y="1" width="7" height="7" rx="1.5"/>
+                <rect x="1" y="10" width="7" height="7" rx="1.5"/>
+                <rect x="10" y="10" width="7" height="7" rx="1.5"/>
+            </svg>
+        </button>
+        <div id="taskbar-windows"></div>
+        <div class="taskbar-spacer"></div>
+        <div id="taskbar-clock"></div>
+    </div>
+
+    <!-- ── Launcher overlay ──────────────────────────────── -->
+    <div id="launcher" class="hidden">
+        <div class="launcher-backdrop"></div>
+        <div class="launcher-panel">
+            <h2>Applications</h2>
+            <div id="launcher-grid"></div>
+        </div>
+    </div>
+
+    <!-- ── Notification stack ────────────────────────────── -->
+    <div id="notifications"></div>
+
+    <!-- ── Scripts ────────────────────────────────────────── -->
+    <!-- Shared ZRO client SDK (WebSocket, invoke, state, etc.) -->
+    <script src="/static/zro-client.js"></script>
+
+    <!-- Your shell modules — edit these freely -->
+    <script src="/custom-shell/static/window-manager.js"></script>
+    <script src="/custom-shell/static/taskbar.js"></script>
+    <script src="/custom-shell/static/launcher.js"></script>
+    <script src="/custom-shell/static/desktop.js"></script>
+</body>
+</html>

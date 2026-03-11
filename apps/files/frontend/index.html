@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css">
+    <link rel="stylesheet" href="/files/static/app.css">
+</head>
+<body>
+    <div id="app">
+        <nav id="breadcrumb"></nav>
+        <div id="main">
+            <div id="file-list">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-icon"></th>
+                            <th class="col-name">Name</th>
+                            <th class="col-size">Size</th>
+                            <th class="col-date">Modified</th>
+                        </tr>
+                    </thead>
+                    <tbody id="file-tbody"></tbody>
+                </table>
+            </div>
+            <aside id="preview-panel" class="hidden">
+                <div id="preview-header">
+                    <span id="preview-filename"></span>
+                    <button id="btn-close-preview">✕</button>
+                </div>
+                <div id="preview-content"></div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Context menu -->
+    <div id="ctx-menu" class="hidden">
+        <div class="ctx-item" data-action="open">Open</div>
+        <div class="ctx-item" data-action="delete">Delete</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" data-action="new-file">New File</div>
+        <div class="ctx-item" data-action="new-folder">New Folder</div>
+    </div>
+
+    <script src="/static/zro-client.js"></script>
+    <script src="/files/static/app.js"></script>
+</body>
+</html>

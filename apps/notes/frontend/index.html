@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css">
+    <link rel="stylesheet" href="/notes/static/app.css">
+</head>
+<body>
+    <div id="app">
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h2>Notes</h2>
+                <button id="btn-new">+ New</button>
+            </div>
+            <div id="notes-list"></div>
+        </aside>
+        <main id="editor">
+            <div id="editor-header">
+                <input type="text" id="note-title" placeholder="Note title…" disabled>
+                <button id="btn-delete" title="Delete note" disabled>🗑</button>
+            </div>
+            <textarea id="note-content" placeholder="Start writing…" disabled></textarea>
+            <div id="status-bar">
+                <span id="status-text">Select or create a note</span>
+            </div>
+        </main>
+    </div>
+    <script src="/static/zro-client.js"></script>
+    <script src="/notes/static/app.js"></script>
+</body>
+</html>

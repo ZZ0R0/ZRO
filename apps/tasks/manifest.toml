@@ -1,0 +1,18 @@
+[app]
+slug = "tasks"
+name = "Tasks"
+version = "0.1.0"
+description = "Gestionnaire de tâches avec vue Kanban"
+
+[backend]
+executable = "zro-app-tasks"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]
+
+[permissions.capabilities]

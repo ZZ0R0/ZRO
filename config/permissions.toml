@@ -1,0 +1,31 @@
+# ZRO Permissions Configuration
+# ──────────────────────────────────────────────────────────
+# Controls which users/roles/groups can access which apps.
+# If this file is absent, all authenticated users can access all apps.
+#
+# Rules:
+# - If no section exists for an app → open to all
+# - Once a section is defined → only matching users/roles/groups have access
+# - admin_bypass: admins skip all per-app checks
+
+[global]
+admin_bypass = true
+
+# ── Examples (uncomment to enable) ─────────────────────
+
+# Terminal: only admins and the "developers" group
+# [apps.terminal]
+# roles = ["admin"]
+# groups = ["developers", "sudo"]
+
+# Files: accessible to specific roles and groups
+# [apps.files]
+# roles = ["admin", "user"]
+# groups = ["staff"]
+# users = ["alice", "charlie"]
+
+# Tasks: open to all logged-in users with role "user" or "admin"
+# [apps.tasks]
+# roles = ["admin", "user"]
+
+# Notes: no section → open to everyone (default)

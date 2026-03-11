@@ -1,0 +1,155 @@
+#app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Sidebar */
+#sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: var(--zro-bg-secondary);
+    border-right: 1px solid var(--zro-bg-surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--zro-space-md);
+    border-bottom: 1px solid var(--zro-bg-surface);
+}
+
+.sidebar-header h2 {
+    font-size: var(--zro-font-size-lg);
+    font-weight: 600;
+}
+
+.sidebar-header button {
+    font-size: var(--zro-font-size-sm);
+    padding: var(--zro-space-xs) var(--zro-space-sm);
+}
+
+#notes-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--zro-space-sm);
+}
+
+.note-item {
+    padding: var(--zro-space-sm) var(--zro-space-md);
+    border-radius: var(--zro-radius-sm);
+    cursor: pointer;
+    margin-bottom: 2px;
+    transition: background 0.15s;
+}
+
+.note-item:hover {
+    background: var(--zro-bg-surface);
+}
+
+.note-item.active {
+    background: var(--zro-accent);
+    color: var(--zro-bg-primary);
+}
+
+.note-item .note-item-title {
+    font-size: var(--zro-font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.note-item .note-item-date {
+    font-size: 0.75rem;
+    color: var(--zro-text-secondary);
+    margin-top: 2px;
+}
+
+.note-item.active .note-item-date {
+    color: var(--zro-bg-surface);
+}
+
+/* Editor */
+#editor {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#editor-header {
+    display: flex;
+    align-items: center;
+    gap: var(--zro-space-sm);
+    padding: var(--zro-space-md);
+    border-bottom: 1px solid var(--zro-bg-surface);
+}
+
+#note-title {
+    flex: 1;
+    font-size: var(--zro-font-size-lg);
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: var(--zro-space-xs) var(--zro-space-sm);
+}
+
+#note-title:focus {
+    border-color: var(--zro-accent);
+    background: var(--zro-bg-secondary);
+}
+
+#btn-delete {
+    background: transparent;
+    color: var(--zro-text-secondary);
+    padding: var(--zro-space-xs) var(--zro-space-sm);
+    font-size: 1rem;
+}
+
+#btn-delete:hover:not(:disabled) {
+    color: var(--zro-error);
+}
+
+#btn-delete:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+#note-content {
+    flex: 1;
+    resize: none;
+    padding: var(--zro-space-md);
+    font-family: var(--zro-font-mono);
+    font-size: var(--zro-font-size-md);
+    line-height: 1.6;
+    background: var(--zro-bg-primary);
+    border: none;
+    border-radius: 0;
+}
+
+#note-content:disabled {
+    opacity: 0.5;
+}
+
+#status-bar {
+    padding: var(--zro-space-xs) var(--zro-space-md);
+    font-size: 0.75rem;
+    color: var(--zro-text-secondary);
+    border-top: 1px solid var(--zro-bg-surface);
+    background: var(--zro-bg-secondary);
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--zro-text-secondary);
+    font-size: var(--zro-font-size-sm);
+}

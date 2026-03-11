@@ -1,0 +1,23 @@
+{
+    "name": "@zro/sdk",
+    "version": "0.1.0",
+    "description": "ZRO Application SDK for Node.js",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist/"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "test": "tsc -p tsconfig.test.json && node --test dist-test/tests/*.test.js",
+        "prepublishOnly": "npm run build"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.4.0",
+        "typescript": "^5.0.0"
+    },
+    "license": "MIT"
+}

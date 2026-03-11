@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo Test — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css">
+    <style>
+        :root {
+            --echo-green: #22c55e;
+            --echo-blue: #3b82f6;
+            --echo-red: #ef4444;
+            --echo-amber: #f59e0b;
+            --echo-gray: #6b7280;
+        }
+
+        .test-app {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h1 .badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        .badge.connected {
+            background: var(--echo-green);
+            color: white;
+        }
+
+        .badge.disconnected {
+            background: var(--echo-red);
+            color: white;
+        }
+
+        .subtitle {
+            color: var(--echo-gray);
+            margin: 0 0 24px;
+            font-size: 0.9rem;
+        }
+
+        .section {
+            background: #1e1e2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .section h2 {
+            font-size: 1.1rem;
+            margin: 0 0 12px;
+            color: var(--echo-blue);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section h2 .method {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        .method.get { background: var(--echo-green); color: #000; }
+        .method.post { background: var(--echo-blue); color: #fff; }
+        .method.put { background: var(--echo-amber); color: #000; }
+        .method.delete { background: var(--echo-red); color: #fff; }
+        .method.ws { background: #8b5cf6; color: #fff; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"], textarea {
+            background: #111;
+            border: 1px solid #444;
+            color: #eee;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        button {
+            background: var(--echo-blue);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        button:hover { opacity: 0.9; }
+        button.green { background: var(--echo-green); color: #000; }
+        button.red { background: var(--echo-red); }
+        button.amber { background: var(--echo-amber); color: #000; }
+
+        .result {
+            background: #0a0a15;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 250px;
+            overflow-y: auto;
+            color: #aaa;
+        }
+
+        .result.success { border-color: var(--echo-green); }
+        .result.error { border-color: var(--echo-red); }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .status-card {
+            background: #111;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .status-card .label {
+            color: var(--echo-gray);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .status-card .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--echo-green);
+        }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #222;
+            font-size: 0.8rem;
+            font-family: monospace;
+            display: flex;
+            gap: 8px;
+        }
+
+        .log-entry .time { color: var(--echo-gray); flex-shrink: 0; }
+        .log-entry .kind { color: var(--echo-blue); width: 50px; flex-shrink: 0; }
+        .log-entry .msg { color: #ccc; }
+
+        .run-all-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #1e1e2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .run-all-bar .stats {
+            font-size: 0.85rem;
+            color: var(--echo-gray);
+        }
+
+        .run-all-bar .stats .pass { color: var(--echo-green); font-weight: 700; }
+        .run-all-bar .stats .fail { color: var(--echo-red); font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="test-app">
+        <h1>
+            🧪 Echo Test
+            <span id="ws-badge" class="badge disconnected">Disconnected</span>
+        </h1>
+        <p class="subtitle">Application de test complète pour valider le framework zro — HTTP, WebSocket, sessions, données.</p>
+
+        <!-- Run All Tests -->
+        <div class="run-all-bar">
+            <div>
+                <button onclick="runAllTests()" class="green">▶ Lancer tous les tests</button>
+            </div>
+            <div class="stats" id="test-stats">En attente…</div>
+        </div>
+
+        <!-- 1. Status -->
+        <div class="section" id="section-status">
+            <h2><span class="method get">GET</span> /api/status — État du système</h2>
+            <button onclick="testStatus()">Tester</button>
+            <div id="status-grid" class="status-grid" style="margin-top: 10px;"></div>
+            <div id="result-status" class="result" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- 2. Echo -->
+        <div class="section" id="section-echo">
+            <h2><span class="method post">POST</span> /api/echo — Écho de requête</h2>
+            <div class="controls">
+                <input type="text" id="echo-input" placeholder='{"message": "Bonjour zro!"}' value='{"message": "Bonjour zro!"}'>
+                <button onclick="testEcho()">Envoyer</button>
+            </div>
+            <div id="result-echo" class="result"></div>
+        </div>
+
+        <!-- 3. KV Store -->
+        <div class="section" id="section-kv">
+            <h2>
+                <span class="method put">PUT</span>
+                <span class="method delete">DEL</span>
+                /api/kv — Stockage clé-valeur
+            </h2>
+            <div class="controls">
+                <input type="text" id="kv-key" placeholder="clé" value="test_key" style="flex: 0 0 120px;">
+                <input type="text" id="kv-value" placeholder="valeur" value='"hello world"'>
+                <button onclick="testKvPut()" class="amber">SET</button>
+                <button onclick="testKvGet()" class="green">GET ALL</button>
+                <button onclick="testKvDel()" class="red">DELETE</button>
+            </div>
+            <div id="result-kv" class="result"></div>
+        </div>
+
+        <!-- 4. WebSocket Echo -->
+        <div class="section" id="section-ws-echo">
+            <h2><span class="method ws">WS</span> echo — Écho WebSocket</h2>
+            <div class="controls">
+                <input type="text" id="ws-echo-input" placeholder="Message à envoyer" value="Hello WebSocket!">
+                <button onclick="testWsEcho()" style="background: #8b5cf6;">Envoyer</button>
+            </div>
+            <div id="result-ws-echo" class="result"></div>
+        </div>
+
+        <!-- 5. WebSocket Ping/Pong -->
+        <div class="section" id="section-ws-ping">
+            <h2><span class="method ws">WS</span> ping — Latence WebSocket</h2>
+            <button onclick="testWsPing()" style="background: #8b5cf6;">Ping</button>
+            <div id="result-ws-ping" class="result" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- 6. WebSocket Counter -->
+        <div class="section" id="section-ws-counter">
+            <h2><span class="method ws">WS</span> counter — Compteur partagé</h2>
+            <button onclick="testWsCounter()" style="background: #8b5cf6;">Incrémenter</button>
+            <div id="result-ws-counter" class="result" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- 7. WebSocket Clients -->
+        <div class="section" id="section-ws-clients">
+            <h2><span class="method ws">WS</span> get_clients — Clients connectés</h2>
+            <button onclick="testWsClients()" style="background: #8b5cf6;">Lister</button>
+            <div id="result-ws-clients" class="result" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- 8. Event Log -->
+        <div class="section" id="section-log">
+            <h2><span class="method get">GET</span> /api/log — Journal d'événements</h2>
+            <button onclick="testLog()">Rafraîchir</button>
+            <div id="log-container" class="log-container" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <script src="/static/zro-client.js"></script>
+    <script>
+        // ── ZRO Client setup ────────────────────────────────────────────
+        const slug = ZroClient.slugFromUrl() || 'echo';
+        let conn = null;
+
+        // ── WebSocket via ZroClient ─────────────────────────────────────
+
+        function connectWs() {
+            conn = ZroClient.connect({
+                slug: slug,
+                onConnect() {
+                    document.getElementById('ws-badge').textContent = 'Connecté';
+                    document.getElementById('ws-badge').className = 'badge connected';
+                },
+                onDisconnect() {
+                    document.getElementById('ws-badge').textContent = 'Déconnecté';
+                    document.getElementById('ws-badge').className = 'badge disconnected';
+                },
+            });
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────
+
+        function showResult(elementId, data, success = true) {
+            const el = document.getElementById(elementId);
+            el.textContent = JSON.stringify(data, null, 2);
+            el.className = `result ${success ? 'success' : 'error'}`;
+        }
+
+        // ── Test functions ──────────────────────────────────────────────
+
+        async function testStatus() {
+            try {
+                const data = await conn.invoke('status', {});
+                showResult('result-status', data, data.ok);
+
+                // Update status grid
+                const grid = document.getElementById('status-grid');
+                grid.innerHTML = `
+                    <div class="status-card"><div class="label">Slug</div><div class="value">${data.slug || '-'}</div></div>
+                    <div class="status-card"><div class="label">Requête #</div><div class="value">${data.request_number || '-'}</div></div>
+                    <div class="status-card"><div class="label">Clients WS</div><div class="value">${data.connected_clients ?? '-'}</div></div>
+                    <div class="status-card"><div class="label">Entrées KV</div><div class="value">${data.kv_entries ?? '-'}</div></div>
+                    <div class="status-card"><div class="label">Utilisateur</div><div class="value">${data.session?.username || '-'}</div></div>
+                `;
+                return true;
+            } catch (e) {
+                showResult('result-status', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testEcho() {
+            try {
+                const input = document.getElementById('echo-input').value;
+                let parsed;
+                try { parsed = JSON.parse(input); } catch { parsed = input; }
+                const data = await conn.invoke('echo', parsed);
+                showResult('result-echo', data, data.ok);
+                return true;
+            } catch (e) {
+                showResult('result-echo', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testKvPut() {
+            try {
+                const key = document.getElementById('kv-key').value;
+                const valueStr = document.getElementById('kv-value').value;
+                let value;
+                try { value = JSON.parse(valueStr); } catch { value = valueStr; }
+                const data = await conn.invoke('kv_set', { key, value });
+                showResult('result-kv', data, data.ok);
+                return true;
+            } catch (e) {
+                showResult('result-kv', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testKvGet() {
+            try {
+                const data = await conn.invoke('kv_list', {});
+                showResult('result-kv', data, data.ok);
+                return true;
+            } catch (e) {
+                showResult('result-kv', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testKvDel() {
+            try {
+                const key = document.getElementById('kv-key').value;
+                const data = await conn.invoke('kv_delete', { key });
+                showResult('result-kv', data, data.ok);
+                return true;
+            } catch (e) {
+                showResult('result-kv', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testWsEcho() {
+            try {
+                const input = document.getElementById('ws-echo-input').value;
+                const resp = await conn.invoke('echo', { message: input });
+                showResult('result-ws-echo', resp, true);
+                return true;
+            } catch (e) {
+                showResult('result-ws-echo', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testWsPing() {
+            try {
+                const t0 = performance.now();
+                const resp = await conn.invoke('ping', {});
+                const latency = (performance.now() - t0).toFixed(1);
+                showResult('result-ws-ping', { ...resp, latency_ms: latency }, true);
+                return true;
+            } catch (e) {
+                showResult('result-ws-ping', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testWsCounter() {
+            try {
+                const resp = await conn.invoke('counter', {});
+                showResult('result-ws-counter', resp, true);
+                return true;
+            } catch (e) {
+                showResult('result-ws-counter', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testWsClients() {
+            try {
+                const resp = await conn.invoke('get_clients', {});
+                showResult('result-ws-clients', resp, true);
+                return true;
+            } catch (e) {
+                showResult('result-ws-clients', { error: e.message }, false);
+                return false;
+            }
+        }
+
+        async function testLog() {
+            try {
+                const data = await conn.invoke('log', {});
+                const container = document.getElementById('log-container');
+                if (data.entries && data.entries.length > 0) {
+                    container.innerHTML = data.entries.map(e =>
+                        `<div class="log-entry">
+                            <span class="time">${new Date(e.timestamp).toLocaleTimeString()}</span>
+                            <span class="kind">${e.kind}</span>
+                            <span class="msg">${e.message}</span>
+                        </div>`
+                    ).reverse().join('');
+                } else {
+                    container.innerHTML = '<div style="color: #666; padding: 8px;">Aucun événement</div>';
+                }
+                return true;
+            } catch (e) {
+                const container = document.getElementById('log-container');
+                container.innerHTML = `<div style="color: var(--echo-red);">Erreur: ${e.message}</div>`;
+                return false;
+            }
+        }
+
+        // ── Run All Tests ───────────────────────────────────────────────
+
+        async function runAllTests() {
+            const statsEl = document.getElementById('test-stats');
+            statsEl.textContent = 'Exécution en cours…';
+
+            const tests = [
+                { name: 'GET /api/status', fn: testStatus },
+                { name: 'POST /api/echo', fn: testEcho },
+                { name: 'PUT /api/kv', fn: testKvPut },
+                { name: 'GET /api/kv', fn: testKvGet },
+                { name: 'DELETE /api/kv', fn: testKvDel },
+                { name: 'WS echo', fn: testWsEcho },
+                { name: 'WS ping', fn: testWsPing },
+                { name: 'WS counter', fn: testWsCounter },
+                { name: 'WS get_clients', fn: testWsClients },
+                { name: 'GET /api/log', fn: testLog },
+            ];
+
+            let pass = 0;
+            let fail = 0;
+
+            for (const test of tests) {
+                try {
+                    const ok = await test.fn();
+                    if (ok) pass++; else fail++;
+                } catch (e) {
+                    fail++;
+                }
+                // Small delay between tests
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            statsEl.innerHTML = `<span class="pass">✓ ${pass} réussi(s)</span> / <span class="fail">${fail > 0 ? '✗ ' + fail + ' échoué(s)' : '0 échoué'}</span> — ${tests.length} tests`;
+        }
+
+        // ── Init ────────────────────────────────────────────────────────
+        connectWs();
+    </script>
+</body>
+</html>

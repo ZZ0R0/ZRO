@@ -1,0 +1,42 @@
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#terminal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--zro-space-sm) var(--zro-space-md);
+    background: var(--zro-bg-secondary);
+    border-bottom: 1px solid var(--zro-bg-surface);
+}
+
+.title {
+    font-size: var(--zro-font-size-sm);
+    font-weight: 600;
+}
+
+.status {
+    font-size: 0.75rem;
+    color: var(--zro-text-secondary);
+}
+
+.status.connected { color: var(--zro-success); }
+.status.error { color: var(--zro-error); }
+
+#terminal-container {
+    flex: 1;
+    padding: var(--zro-space-xs);
+    background: #000;
+}
+
+/* Override xterm.js background to match */
+.xterm { height: 100%; }
+.xterm-viewport { overflow-y: auto !important; }

@@ -1,0 +1,15 @@
+[app]
+slug = "custom-shell"
+name = "Custom Shell"
+version = "0.1.0"
+description = "Custom desktop shell — your own web desktop environment"
+
+[backend]
+executable = "zro-app-custom-shell"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]

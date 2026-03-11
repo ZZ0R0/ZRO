@@ -1,0 +1,19 @@
+[app]
+slug = "files"
+name = "Files"
+version = "0.1.0"
+description = "A simple file explorer"
+
+[backend]
+executable = "zro-app-files"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]
+
+[permissions.capabilities]
+fs_read_system = true

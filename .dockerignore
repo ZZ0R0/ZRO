@@ -1,0 +1,21 @@
+# Build
+target/
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime data
+data/
+/tmp/zro-ipc/
+
+# Docker
+docker-compose.override.yml

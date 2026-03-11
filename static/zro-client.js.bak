@@ -1,0 +1,533 @@
+/**
+ * zro-client.js — Frontend SDK for ZRO applications.
+ *
+ * Three normalized communication channels:
+ *
+ * 1. WS invoke (req/resp):
+ *    const result = await conn.invoke('command_name', { param1: 'value' });
+ *
+ * 2. WS events (fire-and-forget / push):
+ *    conn.emit('event_name', data);               // send to backend
+ *    conn.on('event_name', (payload) => { ... });  // receive from backend
+ *
+ * 3. HTTP API (req/resp):
+ *    const data = await ZroClient.api(slug, 'GET', '/items');
+ *
+ * Additional:
+ *    conn.state.save(key, value)  // persist UI state (SQLite-backed)
+ *    ZroClient.shell.*            // Shell window management (postMessage)
+ */
+(function () {
+    'use strict';
+
+    // ── Instance ID helpers ──────────────────────────────
+    let _instanceCounter = 0;
+
+    /**
+     * Parse URL path to extract slug and optional instanceId.
+     * Supports:  /{slug}/  →  { slug, instanceId: null }
+     *            /{slug}/{instanceId}/  →  { slug, instanceId }
+     */
+    function _parseUrlPath() {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        const slug = parts[0] || null;
+        // Second segment is instanceId if it exists and is not 'static' or 'api'
+        const second = parts[1] || null;
+        const instanceId = (second && second !== 'static' && second !== 'api') ? second : null;
+        return { slug, instanceId };
+    }
+
+    /**
+     * WebSocket connection wrapper with multiplexed protocol.
+     * Connects to /ws and sends register/unregister messages.
+     */
+    class ZroConnection {
+        constructor(options) {
+            this._slug = options.slug;
+            // Priority: explicit option > URL-detected > auto-generated
+            const urlInfo = _parseUrlPath();
+            this._instanceId = options.instanceId
+                || (urlInfo.slug === options.slug ? urlInfo.instanceId : null)
+                || `${options.slug}-${++_instanceCounter}`;
+            this._onConnect = options.onConnect || function () {};
+            this._onDisconnect = options.onDisconnect || function () {};
+            this._onError = options.onError || function () {};
+            this._listeners = {};       // v2: event listeners
+            this._pendingInvokes = {};  // v2: id -> { resolve, reject, timer }
+            this._ws = null;
+            this._connectionState = 'connecting';
+            this._registered = false;
+            this._reconnectAttempts = 0;
+            this._maxReconnectAttempts = Infinity; // Never give up
+            this._reconnectDelay = 1000;
+            this._maxReconnectDelay = 30000;
+            this._closed = false;
+            this._connect();
+        }
+
+        get connectionState() { return this._connectionState; }
+        get instanceId() { return this._instanceId; }
+
+        _connect() {
+            if (this._closed) return;
+
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const url = `${proto}//${location.host}/ws`;
+
+            try {
+                this._ws = new WebSocket(url);
+            } catch (e) {
+                this._onError(e);
+                this._scheduleReconnect();
+                return;
+            }
+
+            this._ws.onopen = () => {
+                this._connectionState = 'connected';
+                this._reconnectAttempts = 0;
+                this._reconnectDelay = 1000;
+
+                // Register this instance on the multiplexed WS
+                this._ws.send(JSON.stringify({
+                    type: 'register',
+                    instance: this._instanceId,
+                    app: this._slug,
+                }));
+            };
+
+            this._ws.onclose = () => {
+                this._connectionState = 'disconnected';
+                this._registered = false;
+                this._onDisconnect();
+                this._scheduleReconnect();
+            };
+
+            this._ws.onerror = (e) => {
+                this._onError(e);
+            };
+
+            this._ws.onmessage = (e) => {
+                try {
+                    const msg = JSON.parse(e.data);
+
+                    // ── Registration confirmation ──────────────
+                    if (msg.type === 'registered' && msg.instance === this._instanceId) {
+                        this._registered = true;
+                        if (msg.reconnected) {
+                            this._onConnect({ reconnected: true });
+                        } else {
+                            this._onConnect({ reconnected: false });
+                        }
+                        return;
+                    }
+
+                    // ── Filter by instance (multiplexed) ───────
+                    // Messages with an instance field that doesn't match us are ignored
+                    if (msg.instance && msg.instance !== this._instanceId) {
+                        return;
+                    }
+
+                    // ── Command response ───────────────────
+                    if (msg.type === 'response' && msg.id) {
+                        const pending = this._pendingInvokes[msg.id];
+                        if (pending) {
+                            clearTimeout(pending.timer);
+                            delete this._pendingInvokes[msg.id];
+                            if (msg.error) {
+                                pending.reject(new Error(msg.error));
+                            } else {
+                                pending.resolve(msg.result);
+                            }
+                        }
+                        return;
+                    }
+
+                    // ── Backend event ──────────────────────
+                    if (msg.type === 'event' && msg.event) {
+                        const listeners = this._listeners[msg.event];
+                        if (listeners) {
+                            listeners.forEach(fn => {
+                                try { fn(msg.payload); } catch (err) { console.error('Listener error:', err); }
+                            });
+                        }
+                        return;
+                    }
+
+                    // ── Error from server ──────────────────────
+                    if (msg.type === 'error') {
+                        console.warn('zro-client: server error:', msg.error);
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('zro-client: malformed message', err);
+                }
+            };
+        }
+
+        _scheduleReconnect() {
+            if (this._closed) return;
+            this._reconnectAttempts++;
+            const delay = Math.min(
+                this._reconnectDelay * Math.pow(2, this._reconnectAttempts - 1),
+                this._maxReconnectDelay
+            );
+            setTimeout(() => this._connect(), delay);
+        }
+
+        // ── API ────────────────────────────────────────────────
+
+        /**
+         * Invoke a backend command (req/resp).
+         * @param {string} command
+         * @param {Object} [params={}]
+         * @param {Object} [options]
+         * @param {number} [options.timeout=30000]
+         * @returns {Promise<*>}
+         */
+        invoke(command, params, options) {
+            const timeout = (options && options.timeout) || 30000;
+            const id = crypto.randomUUID();
+
+            return new Promise((resolve, reject) => {
+                if (!this._ws || this._ws.readyState !== WebSocket.OPEN) {
+                    return reject(new Error('WebSocket not connected'));
+                }
+
+                const timer = setTimeout(() => {
+                    delete this._pendingInvokes[id];
+                    reject(new Error(`invoke('${command}') timed out`));
+                }, timeout);
+
+                this._pendingInvokes[id] = { resolve, reject, timer };
+
+                this._ws.send(JSON.stringify({
+                    type: 'invoke',
+                    id,
+                    instance: this._instanceId,
+                    command,
+                    params: params || {},
+                }));
+            });
+        }
+
+        /**
+         * Listen for backend events.
+         * @param {string} event
+         * @param {Function} handler
+         */
+        listen(event, handler) {
+            if (!this._listeners[event]) this._listeners[event] = [];
+            this._listeners[event].push(handler);
+        }
+
+        /**
+         * Remove an event listener.
+         * @param {string} event
+         * @param {Function} handler
+         */
+        unlisten(event, handler) {
+            if (!this._listeners[event]) return;
+            this._listeners[event] = this._listeners[event].filter(fn => fn !== handler);
+        }
+
+        // ── Convenience aliases ──────────────────────────────────
+
+        /** Alias for listen(). */
+        on(event, handler) { return this.listen(event, handler); }
+
+        /** Alias for unlisten(). */
+        off(event, handler) { return this.unlisten(event, handler); }
+
+        /** Alias for emit(). */
+        send(event, data) { return this.emit(event, data); }
+
+        // ── State persistence API ───────────────────────────
+
+        /**
+         * Persistent state object — save/restore UI state across sessions.
+         * Uses runtime-intercepted __state:* commands backed by SQLite.
+         */
+        get state() {
+            const self = this;
+            return {
+                /**
+                 * Save a value for a key (persisted in SQLite, scoped to user+app).
+                 * @param {string} key
+                 * @param {*} value — will be JSON-serialized
+                 * @returns {Promise<boolean>}
+                 */
+                async save(key, value) {
+                    return self.invoke('__state:save', {
+                        key,
+                        value: JSON.stringify(value),
+                    });
+                },
+
+                /**
+                 * Restore a previously saved value.
+                 * @param {string} key
+                 * @returns {Promise<*>} — parsed value or null
+                 */
+                async restore(key) {
+                    const raw = await self.invoke('__state:restore', { key });
+                    return raw ? JSON.parse(raw) : null;
+                },
+
+                /**
+                 * Delete a saved key.
+                 * @param {string} key
+                 * @returns {Promise<boolean>}
+                 */
+                async delete(key) {
+                    return self.invoke('__state:delete', { key });
+                },
+
+                /**
+                 * List all saved keys for this app.
+                 * @returns {Promise<string[]>}
+                 */
+                async keys() {
+                    return self.invoke('__state:keys');
+                },
+            };
+        }
+
+        /**
+         * Send a fire-and-forget event to the backend via WS.
+         * @param {string} event
+         * @param {*} data
+         */
+        emit(event, data) {
+            if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+                this._ws.send(JSON.stringify({
+                    type: 'emit',
+                    instance: this._instanceId,
+                    event,
+                    data: data || null,
+                }));
+            }
+        }
+
+        /** Close the connection — sends unregister first. */
+        close() {
+            this._closed = true;
+            // Send unregister before closing
+            if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+                try {
+                    this._ws.send(JSON.stringify({
+                        type: 'unregister',
+                        instance: this._instanceId,
+                    }));
+                } catch (_) { /* ignore */ }
+                this._ws.close();
+            }
+            // Reject all pending
+            Object.values(this._pendingInvokes).forEach(({ reject, timer }) => {
+                clearTimeout(timer);
+                reject(new Error('Connection closed'));
+            });
+            this._pendingInvokes = {};
+        }
+    }
+
+    // ── Shell API (postMessage protocol) ────────────────
+
+    /**
+     * ShellAPI — used by apps running inside the Shell's iframes.
+     * Communicates with the Shell parent via postMessage.
+     */
+    class ShellAPI {
+        constructor() {
+            this._pending = new Map();
+            this._listeners = new Map();
+            this._reqId = 0;
+
+            window.addEventListener('message', (e) => {
+                if (!e.data || typeof e.data.type !== 'string') return;
+
+                if (e.data.type === 'zro:shell:response' && e.data.requestId) {
+                    const resolver = this._pending.get(e.data.requestId);
+                    if (resolver) {
+                        this._pending.delete(e.data.requestId);
+                        if (e.data.success === false) {
+                            resolver.reject(new Error(e.data.payload?.error || 'Shell API error'));
+                        } else {
+                            resolver.resolve(e.data.payload);
+                        }
+                    }
+                }
+
+                if (e.data.type === 'zro:shell:event' && e.data.event) {
+                    const handlers = this._listeners.get(e.data.event) || [];
+                    handlers.forEach((h) => {
+                        try { h(e.data.payload); } catch (err) { console.error('ShellAPI listener error:', err); }
+                    });
+                }
+            });
+        }
+
+        _send(method, payload) {
+            return new Promise((resolve, reject) => {
+                const requestId = `req_${++this._reqId}`;
+                this._pending.set(requestId, { resolve, reject });
+                parent.postMessage({
+                    type: `zro:shell:${method}`,
+                    requestId,
+                    payload: payload || {},
+                }, '*');
+                setTimeout(() => {
+                    if (this._pending.has(requestId)) {
+                        this._pending.delete(requestId);
+                        reject(new Error(`Shell API timeout: ${method}`));
+                    }
+                }, 5000);
+            });
+        }
+
+        setTitle(title) { return this._send('setTitle', { title }); }
+        notify(opts) { return this._send('notify', opts); }
+        setBadgeCount(count) { return this._send('setBadgeCount', { count }); }
+        requestFocus() { return this._send('requestFocus', {}); }
+        minimize() { return this._send('minimize', {}); }
+        maximize() { return this._send('maximize', {}); }
+        restore() { return this._send('restore', {}); }
+        close() { return this._send('close', {}); }
+        confirmClose() { parent.postMessage({ type: 'zro:shell:confirmClose' }, '*'); }
+        cancelClose() { parent.postMessage({ type: 'zro:shell:cancelClose' }, '*'); }
+        setProgress(progress, type) { return this._send('setProgress', { progress, type: type || 'normal' }); }
+        getWindowInfo() { return this._send('getWindowInfo', {}); }
+
+        on(event, handler) {
+            if (!this._listeners.has(event)) this._listeners.set(event, []);
+            this._listeners.get(event).push(handler);
+        }
+
+        off(event, handler) {
+            const arr = this._listeners.get(event);
+            if (arr) this._listeners.set(event, arr.filter((h) => h !== handler));
+        }
+    }
+
+    /**
+     * StandaloneShellStub — no-op implementation for apps running outside the Shell.
+     * All methods resolve silently so apps don't need to check isInShell.
+     */
+    class StandaloneShellStub {
+        setTitle() { return Promise.resolve(); }
+        notify() { return Promise.resolve(); }
+        setBadgeCount() { return Promise.resolve(); }
+        requestFocus() { return Promise.resolve(); }
+        minimize() { return Promise.resolve(); }
+        maximize() { return Promise.resolve(); }
+        restore() { return Promise.resolve(); }
+        close() { return Promise.resolve(); }
+        confirmClose() {}
+        cancelClose() {}
+        setProgress() { return Promise.resolve(); }
+        getWindowInfo() { return Promise.resolve(null); }
+        on() {}
+        off() {}
+    }
+
+    let _shellInstance = null;
+
+    // ── Main API ─────────────────────────────────────────
+
+    /**
+     * Main API object exposed on window.
+     */
+    window.ZroClient = {
+        /**
+         * Create a multiplexed WebSocket connection to an app backend.
+         * @param {Object} options
+         * @param {string} options.slug
+         * @param {string} [options.instanceId]
+         * @param {Function} [options.onConnect]
+         * @param {Function} [options.onDisconnect]
+         * @param {Function} [options.onError]
+         * @returns {ZroConnection}
+         */
+        connect(options) {
+            return new ZroConnection(options);
+        },
+
+        /**
+         * Whether the app is running inside the Shell (in an iframe).
+         */
+        get isInShell() {
+            try { return window !== window.parent; } catch (_) { return true; }
+        },
+
+        /**
+         * Shell API — for apps to communicate with the Shell parent window.
+         * Returns a ShellAPI (inside Shell) or StandaloneShellStub (standalone).
+         */
+        get shell() {
+            if (!_shellInstance) {
+                _shellInstance = this.isInShell ? new ShellAPI() : new StandaloneShellStub();
+            }
+            return _shellInstance;
+        },
+
+        /**
+         * Auto-detect the app slug from the current URL path.
+         * Supports /{slug}/ and /{slug}/{instanceId}/
+         * @returns {string|null}
+         */
+        slugFromUrl() {
+            return _parseUrlPath().slug;
+        },
+
+        /**
+         * Auto-detect the instance ID from the current URL path.
+         * Only present when URL is /{slug}/{instanceId}/.
+         * @returns {string|null}
+         */
+        instanceIdFromUrl() {
+            return _parseUrlPath().instanceId;
+        },
+
+        /**
+         * HTTP API call to an app backend.
+         * @param {string} slug
+         * @param {string} method
+         * @param {string} path
+         * @param {Object} [body]
+         * @param {Object} [query]
+         * @returns {Promise<Object>}
+         */
+        async api(slug, method, path, body, query) {
+            // Use instance-prefixed URL if we're inside an instance path
+            const urlInfo = _parseUrlPath();
+            const prefix = (urlInfo.slug === slug && urlInfo.instanceId)
+                ? `/${slug}/${urlInfo.instanceId}`
+                : `/${slug}`;
+            let url = `${prefix}/api${path}`;
+            if (query) {
+                const params = new URLSearchParams(query);
+                url += '?' + params.toString();
+            }
+            const opts = {
+                method: method.toUpperCase(),
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+            };
+            if (body && method.toUpperCase() !== 'GET') {
+                opts.body = JSON.stringify(body);
+            }
+            const resp = await fetch(url, opts);
+            if (!resp.ok) {
+                const text = await resp.text();
+                let parsed;
+                try { parsed = JSON.parse(text); } catch { parsed = { error: text }; }
+                throw Object.assign(new Error(parsed.error || `HTTP ${resp.status}`), {
+                    status: resp.status,
+                    data: parsed,
+                });
+            }
+            const text = await resp.text();
+            if (!text) return {};
+            return JSON.parse(text);
+        },
+    };
+})();
