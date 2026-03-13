@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings — zro</title>
-    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
-    <link rel="stylesheet" href="/settings/static/app.css?v=1773378881">
+    <link rel="stylesheet" href="/static/zro-base.css">
+    <link rel="stylesheet" href="/settings/static/app.css">
 </head>
 <body>
     <div id="app">
@@ -29,8 +29,17 @@
                 </div>
                 <div class="setting-group">
                     <label>Wallpaper Color</label>
-                    <input type="color" id="wallpaper-color" value="#1e1e2e">
-                    <button id="apply-wallpaper" class="btn-sm">Apply</button>
+                    <div class="inline-row">
+                        <input type="color" id="wallpaper-color" value="#1e1e2e">
+                        <button id="apply-wallpaper" class="btn-sm">Apply Color</button>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>Wallpaper Image URL</label>
+                    <div class="inline-row">
+                        <input type="text" id="wallpaper-url" placeholder="https://example.com/wallpaper.jpg" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--zro-border,#313244);background:var(--zro-bg-primary,#1e1e2e);color:var(--zro-text-primary,#cdd6f4);">
+                        <button id="apply-wallpaper-img" class="btn-sm">Apply Image</button>
+                    </div>
                 </div>
                 <div class="setting-group">
                     <label>Font Size</label>
@@ -103,7 +112,7 @@
             </section>
         </main>
     </div>
-    <script src="/static/zro-client.js?v=1773378881"></script>
-    <script src="/settings/static/app.js?v=1773378881"></script>
+    <script src="/static/zro-client.js"></script>
+    <script src="/settings/static/app.js"></script>
 </body>
 </html>
