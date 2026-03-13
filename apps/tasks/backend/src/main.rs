@@ -10,6 +10,11 @@ use uuid::Uuid;
 
 use zro_sdk::app::{EventEmitter, ZroApp};
 use zro_sdk::context::AppContext;
+use zro_sdk::modules::dev::{DevModule, LogLevel};
+use zro_sdk::modules::ipc::IpcModule;
+use zro_sdk::modules::lifecycle::LifecycleModule;
+use zro_sdk::modules::notifications::NotificationsModule;
+use zro_sdk::modules::state::StateModule;
 
 // ── Data models ─────────────────────────────────────────────────────────────
 
@@ -106,7 +111,20 @@ async fn main() -> anyhow::Result<()> {
     // We need the emitter for broadcasting; set after build
     let emitter_holder: Arc<tokio::sync::OnceCell<EventEmitter>> = Arc::new(tokio::sync::OnceCell::new());
 
+    let lifecycle = LifecycleModule::new()
+        .on_connect(|ctx: AppContext| async move {
+            tracing::info!("Tasks client connected: {:?}", ctx.instance_id);
+        })
+        .on_disconnect(|ctx: AppContext| async move {
+            tracing::info!("Tasks client disconnected: {:?}", ctx.instance_id);
+        });
+
     let app = ZroApp::builder()
+        .module(StateModule::new())
+        .module(IpcModule::new())
+        .module(NotificationsModule::new())
+        .module(DevModule::new().level(LogLevel::Info))
+        .module(lifecycle)
         // ── list_tasks ──────────────────────────────────────────────
         .command("list_tasks", {
             let db = db.clone();
@@ -292,17 +310,6 @@ async fn main() -> anyhow::Result<()> {
                     save_data(&dd, &data).await;
                     serde_json::to_value(&cat).map_err(|e| e.to_string())
                 })
-            }
-        })
-        // ── Lifecycle ───────────────────────────────────────────────
-        .on("client:connected", |ctx: AppContext| {
-            async move {
-                tracing::info!("Tasks client connected: {:?}", ctx.instance_id);
-            }
-        })
-        .on("client:disconnected", |ctx: AppContext| {
-            async move {
-                tracing::info!("Tasks client disconnected: {:?}", ctx.instance_id);
             }
         })
         .build()

@@ -1,0 +1,54 @@
+# /etc/systemd/system/zro-runtime.service
+# ZRO Web Desktop Environment — systemd service unit
+#
+# Install: sudo cp system/zro-runtime.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now zro-runtime
+
+[Unit]
+Description=ZRO Web Desktop Environment
+Documentation=https://github.com/nicmusic/zro
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=zro
+Group=zro
+SupplementaryGroups=tty video audio
+
+# Paths
+WorkingDirectory=/opt/zro
+ExecStart=/usr/bin/zro-runtime
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Environment
+Environment=ZRO_CONFIG=/etc/zro/runtime.toml
+Environment=RUST_LOG=info
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=/var/lib/zro /run/zro /tmp/zro /opt/zro/apps /opt/zro/bin
+ProtectHome=read-only
+NoNewPrivileges=true
+PrivateTmp=false
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+WatchdogSec=30s
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zro
+
+[Install]
+WantedBy=multi-user.target

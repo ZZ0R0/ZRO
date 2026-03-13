@@ -14,6 +14,7 @@ use zro_protocol::types::{SessionId, SessionInfo};
 use zro_protocol::constants::PROTOCOL_VERSION;
 
 use crate::context::AppContext;
+use crate::module::{self, DestroyHook, InitHook, ModuleInitContext, ModuleRegistrar, ZroModule};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ZroSdkError {
@@ -117,6 +118,7 @@ pub struct ZroAppBuilder {
     commands: HashMap<String, CommandFn>,
     event_handlers: HashMap<String, EventFn>,
     lifecycle_handlers: HashMap<String, LifecycleHandler>,
+    modules: Vec<Box<dyn ZroModule>>,
 }
 
 /// Main SDK entry point for zro backend applications.
@@ -133,11 +135,19 @@ pub struct ZroApp {
     commands: HashMap<String, CommandFn>,
     event_handlers: HashMap<String, EventFn>,
     lifecycle_handlers: HashMap<String, LifecycleHandler>,
+    init_hooks: Vec<InitHook>,
+    destroy_hooks: Vec<DestroyHook>,
     writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
     reader: Mutex<tokio::net::unix::OwnedReadHalf>,
 }
 
 impl ZroAppBuilder {
+    /// Register a module. Modules are resolved in dependency order during build.
+    pub fn module(mut self, module: impl ZroModule) -> Self {
+        self.modules.push(Box::new(module));
+        self
+    }
+
     /// Register a command handler (for WS invoke and HTTP API requests).
     ///
     /// The handler must match the `CommandFn` signature. Use `#[zro::command]`
@@ -190,7 +200,30 @@ impl ZroAppBuilder {
     }
 
     /// Build and connect to the runtime. Performs the IPC handshake.
-    pub async fn build(self) -> Result<ZroApp, ZroSdkError> {
+    pub async fn build(mut self) -> Result<ZroApp, ZroSdkError> {
+        // ── Resolve modules in dependency order ─────────────
+        let mut init_hooks: Vec<InitHook> = Vec::new();
+        let mut destroy_hooks: Vec<DestroyHook> = Vec::new();
+
+        if !self.modules.is_empty() {
+            let order = module::resolve_module_order(&self.modules)?;
+            for idx in order {
+                let module = &self.modules[idx];
+                let meta = module.meta();
+                tracing::debug!(module = %meta.name, version = %meta.version, "Registering module");
+
+                let mut registrar = ModuleRegistrar::new();
+                module.register(&mut registrar);
+
+                // Merge registrations into the builder
+                self.commands.extend(registrar.commands);
+                self.event_handlers.extend(registrar.event_handlers);
+                self.lifecycle_handlers.extend(registrar.lifecycle_handlers);
+                init_hooks.extend(registrar.init_hooks);
+                destroy_hooks.extend(registrar.destroy_hooks);
+            }
+        }
+
         // Initialize tracing
         let log_level = std::env::var("ZRO_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
         let filter = tracing_subscriber::EnvFilter::try_new(&log_level)
@@ -258,6 +291,8 @@ impl ZroAppBuilder {
             commands: self.commands,
             event_handlers: self.event_handlers,
             lifecycle_handlers: self.lifecycle_handlers,
+            init_hooks,
+            destroy_hooks,
             writer,
             reader: Mutex::new(reader),
         })
@@ -271,6 +306,7 @@ impl ZroApp {
             commands: HashMap::new(),
             event_handlers: HashMap::new(),
             lifecycle_handlers: HashMap::new(),
+            modules: Vec::new(),
         }
     }
 
@@ -297,10 +333,28 @@ impl ZroApp {
         let commands = Arc::new(self.commands);
         let event_handlers = Arc::new(self.event_handlers);
         let lifecycle_handlers = Arc::new(self.lifecycle_handlers);
+        let destroy_hooks = self.destroy_hooks;
         let writer = self.writer;
         let reader = self.reader;
         let slug = self.slug;
         let data_dir = self.data_dir;
+
+        // ── Run module init hooks ───────────────────────
+        if !self.init_hooks.is_empty() {
+            tracing::debug!("Running {} module init hook(s)", self.init_hooks.len());
+            for hook in &self.init_hooks {
+                let init_ctx = ModuleInitContext {
+                    slug: slug.clone(),
+                    data_dir: data_dir.clone(),
+                    emitter: EventEmitter {
+                        writer: writer.clone(),
+                    },
+                };
+                hook(init_ctx).await.map_err(|e| {
+                    ZroSdkError::HandlerError(format!("Module init failed: {}", e))
+                })?;
+            }
+        }
 
         tracing::info!(slug = %slug, "Entering main loop");
 
@@ -410,6 +464,7 @@ impl ZroApp {
                             username: "".into(),
                             role: "".into(),
                             groups: vec![],
+                            profile: None,
                         },
                         Some(payload.instance_id),
                         slug.clone(),
@@ -667,6 +722,12 @@ impl ZroApp {
 
                 "Shutdown" => {
                     tracing::info!("Received shutdown request");
+
+                    // Run module destroy hooks in reverse order
+                    for hook in destroy_hooks.iter().rev() {
+                        hook().await;
+                    }
+
                     let ack = IpcMessage::new(
                         "ShutdownAck",
                         serde_json::to_value(ShutdownAckPayload {

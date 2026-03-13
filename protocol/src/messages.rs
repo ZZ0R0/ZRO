@@ -211,6 +211,14 @@ pub enum EventTarget {
     /// Broadcast to all connected clients of this app.
     #[serde(rename = "broadcast")]
     Broadcast,
+    /// Broadcast to all apps within a specific user session.
+    /// Used for cross-app system events (theme change, clipboard, lock…).
+    #[serde(rename = "session")]
+    Session { session_id: String },
+    /// Broadcast to every connected client of every app (system-wide).
+    /// Only the runtime or the shell should use this.
+    #[serde(rename = "system")]
+    System,
 }
 
 // ── Framing helpers ─────────────────────────────────────────────

@@ -1,32 +1,30 @@
-# ZRO — App Development Guide
+# ZRO — Guide de création d'apps
 
-## Creating a New App
-
-### 1. Directory Structure
+## Structure d'une app
 
 ```
-apps/myapp/
-├── manifest.toml              # App metadata & config
+apps/my-app/
+├── manifest.toml           # Métadonnées, backend, frontend, permissions
 ├── backend/
-│   ├── Cargo.toml             # (Rust) or package.json (Node) or requirements.txt (Python)
-│   └── src/main.rs            # Backend entry point
+│   └── src/
+│       └── main.rs         # (ou main.py, main.ts)
 └── frontend/
-    ├── index.html             # App UI entry
-    ├── style.css
-    └── app.js
+    ├── index.html          # Point d'entrée
+    ├── app.js              # Logique frontend
+    └── app.css             # Styles (optionnel)
 ```
 
-### 2. Manifest (`manifest.toml`)
+## Manifeste
 
 ```toml
 [app]
-name = "My App"
-slug = "myapp"
+slug = "my-app"             # URL-safe, unique, 2-32 chars
+name = "My App"             # Nom affiché
 version = "0.1.0"
-description = "A new ZRO application"
+description = "Description"
 
 [backend]
-executable = "zro-app-myapp"
+executable = "zro-app-my-app"    # Binaire dans ./bin/
 transport = "unix_socket"
 
 [frontend]
@@ -34,246 +32,309 @@ directory = "frontend"
 index = "index.html"
 
 [permissions]
-roles = ["admin", "user"]
+roles = ["admin", "user"]        # Rôles autorisés
 capabilities = []
 ```
 
-For Python:
+### Backend en Python/Node.js
+
 ```toml
+# Python
 [backend]
 command = "python3"
 args = ["-u"]
 executable = "backend/main.py"
 transport = "unix_socket"
-```
 
-For Node.js:
-```toml
+# Node.js
 [backend]
 command = "node"
 executable = "backend/dist/main.js"
 transport = "unix_socket"
 ```
 
-### 3. Backend (Rust example)
+### Règles de slug
 
-Add to workspace `Cargo.toml`:
-```toml
-members = [
-    # ...
-    "apps/myapp/backend",
-]
-```
+- Regex : `^[a-z0-9]([a-z0-9\-]{0,30}[a-z0-9])?$`
+- Réservés : `apps`, `auth`, `health`, `static`, `api`, `admin`, `system`, `_internal`, `ws`
 
-Create `apps/myapp/backend/Cargo.toml`:
-```toml
-[package]
-name = "zro-app-myapp"
-version.workspace = true
-edition.workspace = true
+## Backend minimal
 
-[[bin]]
-name = "zro-app-myapp"
-path = "src/main.rs"
+### Rust
 
-[dependencies]
-zro_sdk = { path = "../../../sdks/rust" }
-tokio = { workspace = true }
-serde_json = { workspace = true }
-anyhow = { workspace = true }
-```
-
-Create `apps/myapp/backend/src/main.rs`:
 ```rust
 use zro_sdk::app::ZroApp;
 use zro_sdk::context::AppContext;
+use zro_sdk::modules::state::StateModule;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = ZroApp::builder()
+        .module(StateModule::new())
         .command("hello", |params, ctx: AppContext| {
             Box::pin(async move {
-                Ok(serde_json::json!({ "message": "Hello from myapp!" }))
+                Ok(serde_json::json!({ "hello": ctx.session.username }))
             })
         })
-        .build()
-        .await?;
-
+        .build().await?;
     app.run().await?;
     Ok(())
 }
 ```
 
-### 4. Frontend
+### Python
 
-Create `apps/myapp/frontend/index.html`:
+```python
+from zro_sdk import ZroApp, AppContext
+
+app = ZroApp()
+
+@app.command("hello")
+async def hello(ctx: AppContext):
+    return {"hello": ctx.session.username}
+
+app.run()
+```
+
+### Node.js
+
+```typescript
+import { ZroApp } from 'zro-sdk';
+
+const app = new ZroApp();
+app.command('hello', async (ctx, params) => {
+    return { hello: ctx.session.username };
+});
+app.run();
+```
+
+## Frontend minimal
+
 ```html
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <title>My App</title>
+    <link rel="stylesheet" href="/static/zro-base.css">
 </head>
 <body>
-    <div id="output"></div>
+    <div id="app"></div>
     <script src="/static/zro-client.js"></script>
     <script>
-        const conn = ZroClient.connect({
-            slug: 'myapp',
-            onConnect: async () => {
-                const result = await conn.invoke('hello', {});
-                document.getElementById('output').textContent = result.message;
-            },
-        });
+    (async function() {
+        const app = await ZroClient.create({ slug: 'my-app' });
+        const result = await app.invoke('hello');
+        document.getElementById('app').textContent = result.hello;
+    })();
     </script>
 </body>
 </html>
 ```
 
-### 5. Build & Run
+## Routage des URLs
 
-```bash
-./run.sh
-# Builds all workspace members, symlinks binaries, starts runtime
-# Open http://localhost:8080/myapp/
-```
+| URL | Destination |
+|-----|-------------|
+| `/{slug}/` | Frontend `index.html` |
+| `/{slug}/static/{file}` | Fichier statique du frontend |
+| `/{slug}/api/{path}` | Proxy HTTP → backend (auto-routé vers commande) |
+| `/{slug}/{instanceId}/` | Frontend avec instance ID dans l'URL |
+| `/{slug}/{instanceId}/api/{path}` | Proxy HTTP avec instance ID |
 
----
+### Auto-routage HTTP → Commandes
 
-## URL Routing
+`POST /{slug}/api/task` génère les candidats suivants (premier match gagne) :
+1. `task`
+2. `post_task`
+3. `task_create`, `create_task` (POST → create)
+4. Combinaisons de segments
 
-Each app is served at `/{slug}/`. Multi-instance URLs use `/{slug}/{instance_id}/`.
+Voir la [documentation Backend SDK](backend-sdk.md) pour l'algorithme détaillé.
 
-| URL | Purpose |
-|-----|---------|
-| `/{slug}/` | App index.html (default instance) |
-| `/{slug}/static/{path}` | App static assets |
-| `/{slug}/api/{path}` | HTTP API (proxied to backend) |
-| `/{slug}/{instance_id}/` | App index.html (specific instance) |
-| `/{slug}/{instance_id}/static/{path}` | Static assets (same files) |
-| `/{slug}/{instance_id}/api/{path}` | HTTP API proxy |
+## Modèle d'instances
 
-The `instance_id` in the URL is used by `zro-client.js` to auto-assign the instance identity. The runtime serves the same files regardless of instance_id — isolation happens at the WebSocket level.
+Chaque fenêtre frontend ouverte est une **instance** identifiée par `instanceId` (ex: `terminal-1`, `notes-2`).
 
----
+- **Un seul process backend** par app, toutes les instances s'y connectent
+- **`ctx.instance_id`** identifie l'instance dans chaque handler
+- Pour le **WebSocket** : `instance_id` est toujours présent
+- Pour le **HTTP** : `instance_id` est `None`/`null` (pas de session WS)
 
-## Instance Model
+### État partagé vs par instance
 
-**Key concept:** One backend process handles ALL instances of an app. Every handler receives `instance_id` so the backend can scope state.
-
-### Shared State (default)
-
-All instances share the same data. Example: a chat app — every window sees the same messages.
-
-```rust
-// Echo app — shared counter
-.command("counter", move |_params, _ctx| {
-    let n = state.counter.fetch_add(1, Ordering::SeqCst) + 1;
-    Ok(json!({ "count": n }))
-})
-```
-
-### Per-Instance State
-
-Each window has its own isolated state. Example: terminal — each window is a separate shell.
+| Pattern | Quand l'utiliser | Exemple |
+|---------|-----------------|---------|
+| **État global** (shared) | Données communes à tous les utilisateurs | Notes, tâches |
+| **État par instance** | Ressources liées à une fenêtre spécifique | PTY terminal, session shell |
 
 ```rust
-// Terminal app — per-instance PTY
+// État par instance — HashMap indexée par instance_id
 type Sessions = Arc<RwLock<HashMap<String, PtySession>>>;
 
-.on("client:connected", move |ctx: AppContext| {
-    let id = ctx.instance_id.unwrap();
-    sessions.write().await.insert(id, spawn_pty());
-})
+// Créer à la connexion
+app.on("client:connected", |ctx| {
+    sessions.insert(ctx.instance_id.unwrap(), create_pty());
+});
 
-.command("term_input", move |params, ctx: AppContext| {
-    let id = ctx.instance_id.unwrap();
-    let session = sessions.read().await.get(&id);
-    session.write(params["data"].as_str());
-})
+// Nettoyer à la déconnexion (avec grace period)
+LifecycleModule::new()
+    .grace_period(Duration::from_secs(5))
+    .on_timeout(|id| {
+        sessions.remove(&id);  // Nettoyer après timeout
+    });
+```
+
+## Patterns courants
+
+### Persistance fichier JSON
+
+```rust
+// Charger au démarrage
+let data = load_from_disk(&data_dir).await;
+let db = Arc::new(RwLock::new(data));
+
+// Sauvegarder à chaque mutation
+async fn save(data_dir: &Path, db: &Db) {
+    let data = db.read().await;
+    let json = serde_json::to_string_pretty(&*data).unwrap();
+    tokio::fs::write(data_dir.join("data.json"), json).await.ok();
+}
+```
+
+### Broadcast d'événements
+
+```rust
+// Notifier tous les clients d'un changement
+let emitter = app.emitter();  // Avant .run()
+
+app.command("create_task", move |params, ctx| {
+    // ... créer la tâche ...
+    emitter.emit("tasks:updated", json!({"action": "created", "task": task}));
+    Ok(json!(task))
+});
+```
+
+### Sécurité : validation de chemins (Files)
+
+```rust
+fn resolve_safe_path(root: &Path, requested: &str) -> Option<PathBuf> {
+    let requested = requested.trim_start_matches('/');
+    let candidate = root.join(requested);
+    let canonical_root = root.canonicalize().ok()?;
+    let canonical = candidate.canonicalize().ok()?;
+    if canonical.starts_with(&canonical_root) {
+        Some(canonical)
+    } else {
+        None  // Tentative de path traversal
+    }
+}
 ```
 
 ---
 
-## Reference Apps
+## Référence des 7 apps incluses
 
-### Echo (`echo`)
-Test/demo app exercising all SDK features: commands, events, lifecycle, persistence, counters.
-- **Backend:** Rust — commands: `status`, `echo`, `counter`, `kv_set/get/list/delete`, `log`, `ping`, `get_clients`
-- **Frontend:** Single-page test UI with buttons for each feature
+### Echo (test)
 
-### Terminal (`terminal`)
-Full PTY terminal emulator.
-- **Backend:** Rust — spawns one PTY per instance using `portable-pty`. Commands: `term_input`, `term_resize`
-- **Frontend:** xterm.js terminal emulator + fit addon
-- **Pattern:** Per-instance state (each window = separate shell)
+App de test complète qui exerce toutes les fonctionnalités du SDK.
 
-### Notes (`notes`)
-Markdown notes editor.
-- **Backend:** Rust — CRUD on markdown files stored in data_dir. Commands: `list`, `get`, `save`, `delete`
-- **Frontend:** Split-pane editor (textarea + rendered preview)
+**Commandes :** `status`, `echo`, `kv_set`, `kv_get`, `kv_list`, `kv_delete`, `log`, `ping`, `counter`, `get_clients`
 
-### Files (`files`)
-File browser.
-- **Backend:** Rust — browse filesystem, read files. Commands: `list_dir`, `read_file`, `get_info`
-- **Frontend:** Directory tree + file viewer
-- **Capability:** `fs_read_system = true`
+**Backend :** Rust, utilise les 5 modules built-in  
+**Frontend :** Interface de test avec boutons pour chaque commande  
+**État :** Compteur atomique, logs en mémoire, clients connectés
 
-### Tasks (`tasks`)
-Task/todo manager.
-- **Backend:** Rust — JSON-file persistence. Commands: `list`, `add`, `update`, `delete`, `clear_completed`
-- **Frontend:** Task list with add/complete/delete
+### Notes
 
-### Shell (`shell`)
-Default window manager.
-- **Backend:** Rust — minimal (serves app list). Commands: `list_apps`
-- **Frontend:** Window manager with taskbar, iframes for apps
+Éditeur de notes avec sauvegarde automatique.
 
-### Custom Shell (`custom-shell`)
-Advanced window manager with taskbar, launcher, notifications.
-- **Backend:** Rust — same as shell. Commands: `list_apps`
-- **Frontend:** Full desktop environment:
-  - `window-manager.js` — draggable/resizable windows (GPU-composited drag via CSS transform + requestAnimationFrame)
-  - `taskbar.js` — bottom taskbar with window buttons + clock
-  - `launcher.js` — app grid launcher
-  - `desktop.js` — orchestrator (WS connection, state persistence, Shell API handler)
-  - State persistence: window positions/sizes saved to SQLite on every change
+**Commandes :** `list_notes`, `get_note`, `create_note`, `update_note`, `delete_note`, `search_notes`
+
+**Backend :** Rust. Persistance fichier JSON par note (`data/notes/notes/{id}.json`)  
+**Frontend :** Liste latérale + éditeur. Auto-save avec debounce  
+**Pattern :** État global partagé (toutes les instances voient les mêmes notes)
+
+### Tasks
+
+Gestionnaire de tâches avec vue Kanban.
+
+**Commandes :** `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`, `move_task`, `list_categories`, `create_category`, `update_category`, `delete_category`
+
+**Backend :** Rust. Persistance `data/tasks/tasks.json`. Catégories + priorités + dates d'échéance  
+**Frontend :** Kanban 3 colonnes (todo/in_progress/done) avec drag-and-drop, filtres, modale d'édition  
+**Pattern :** Broadcast d'événements `tasks:updated` à chaque modification
+
+### Files
+
+Explorateur de fichiers.
+
+**Commandes :** `ls`, `read_file`, `write_file`, `create_dir`, `delete`, `rename`, `stat`
+
+**Backend :** Rust. Exploration de `data/files/`. Protection path traversal. Détection binaire. Limite de lecture 1 Mo  
+**Frontend :** Vue tableau avec breadcrumb, panneau de preview, menu contextuel  
+**Pattern :** Aucun état persistant — lecture directe du filesystem
+
+### Terminal
+
+Terminal web avec xterm.js.
+
+**Commandes :** `term_input`, `term_resize`
+
+**Backend :** Rust. Utilise `portable_pty` pour spawner un shell par instance. Lecture async dans une tâche Tokio. Émission d'événements `term:output` et `term:exit`  
+**Frontend :** xterm.js (Terminal + FitAddon + WebLinksAddon). Thème Catppuccin  
+**Pattern :** État par instance. `LifecycleModule` avec grace period de 5s. PTY nettoyé au timeout
+
+### Shell (Desktop)
+
+Gestionnaire de fenêtres web — le "bureau" de ZRO.
+
+**Commandes :** `get_apps`, `get_user_info`
+
+**Backend :** Rust, minimal. La logique est dans le frontend  
+**Frontend :** Desktop complet : fenêtres draggables/redimensionnables, taskbar avec horloge, lanceur d'apps, notifications. Les apps s'ouvrent dans des iframes. Persistence de l'état des fenêtres via `__state:save/restore`  
+**Pattern :** Protocole postMessage `zro:shell:*` pour la communication shell↔apps
+
+### Custom Shell
+
+Template de desktop personnalisé — point de départ pour créer son propre shell.
+
+**Commandes :** `get_apps`, `get_user_info` (identique à Shell)
+
+**Backend :** Rust, identique au Shell standard  
+**Frontend :** Implémentation simplifiée du desktop. Destiné à être forké et personnalisé  
 
 ---
 
-## Docker
+## Compilation et ajout d'une app
 
-### Development
+### App Rust
 
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
+1. Créer le dossier `apps/my-app/` avec `manifest.toml`
+2. Ajouter le crate dans `Cargo.toml` (workspace)
+3. `cargo build` → le binaire arrive dans `target/debug/`
+4. Créer un symlink : `ln -s ../target/debug/zro-app-my-app bin/zro-app-my-app`
+5. Redémarrer le runtime (ou attendre le hot-reload si activé)
 
-### Production
+### App Python/Node.js
 
-```bash
-docker compose up -d
-```
+1. Créer le dossier `apps/my-app/` avec `manifest.toml` (avec `command` et `args`)
+2. Installer les dépendances du SDK
+3. Écrire le backend (le runtime le lance automatiquement)
 
-The Dockerfile uses a multi-stage build:
-1. **Build stage:** Rust builder compiles all workspace members
-2. **Runtime stage:** Debian bookworm-slim with Node.js + Python3, copies binaries + frontends + configs
+### Variables d'environnement
 
-Environment: `ZRO_CONFIG=/opt/zro/config/runtime.toml`
+Le runtime fournit automatiquement au process backend :
 
----
+| Variable | Exemple |
+|----------|---------|
+| `ZRO_APP_SLUG` | `my-app` |
+| `ZRO_IPC_SOCKET` | `/tmp/zro/ipc/my-app.sock` |
+| `ZRO_DATA_DIR` | `./data/my-app` |
+| `ZRO_LOG_LEVEL` | `debug` |
 
-## Testing
+## Fichiers statiques
 
-```bash
-# All Rust tests (protocol + runtime + SDK + apps)
-cargo test
+Le contenu du dossier `frontend/` est servi sous `/{slug}/static/`.
 
-# Python SDK tests
-cd sdks/python && python -m pytest tests/ -v
-
-# Node.js SDK tests
-cd sdks/nodejs && npm test
-```
-
-Current: 102 Rust tests + 19 Python tests + 16 Node.js tests = **137 tests**.
+Les fichiers globaux (`zro-client.js`, `zro-base.css`, etc.) sont servis sous `/static/`.

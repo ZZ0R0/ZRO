@@ -1,5 +1,11 @@
 use zro_sdk::app::ZroApp;
 use zro_sdk::context::AppContext;
+use zro_sdk::modules::dev::{DevModule, LogLevel};
+use zro_sdk::modules::ipc::IpcModule;
+use zro_sdk::modules::lifecycle::LifecycleModule;
+use zro_sdk::modules::notifications::NotificationsModule;
+use zro_sdk::modules::state::StateModule;
+use zro_sdk::modules::system::SystemModule;
 use serde_json::json;
 
 /// Shell backend — minimal, the real logic is in the frontend.
@@ -8,6 +14,12 @@ use serde_json::json;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = ZroApp::builder()
+        .module(StateModule::new())
+        .module(IpcModule::new())
+        .module(NotificationsModule::new())
+        .module(SystemModule::new())
+        .module(DevModule::new().level(LogLevel::Info))
+        .module(LifecycleModule::new())
         .command("get_apps", |_params, _ctx: AppContext| {
             Box::pin(async move {
                 // The Shell frontend fetches the app list from /api/apps.

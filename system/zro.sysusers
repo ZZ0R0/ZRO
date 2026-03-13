@@ -1,0 +1,5 @@
+# /etc/sysusers.d/zro.conf
+# Create system user and group for ZRO
+#
+# Type  Name  ID   GECOS           Home
+u       zro   -    "ZRO Service"   /opt/zro

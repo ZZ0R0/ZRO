@@ -9,11 +9,12 @@ A single runtime turns a Linux server into a full desktop accessible via any web
 ```
 Browser (any device)
     ↕  HTTPS + 1 multiplexed WebSocket per session
-ZRO Runtime (Rust/axum, port 8080)
+ZRO Runtime (Rust/axum, port 8090)
 ├── Auth (Argon2id + JWT)
 ├── WS Multiplexer (instance-routed)
 ├── Static file server + HTTP API proxy
 ├── SQLite (sessions, app state)
+├── Control socket (CLI ↔ runtime)
 └── IPC Router (Unix Domain Sockets, length-prefixed JSON)
         ↕
 Backend processes (1 per app)
@@ -27,11 +28,12 @@ Backend processes (1 per app)
 ```bash
 # Local development
 ./run.sh
-# → Builds everything, starts runtime on http://localhost:8080
+# → Builds everything, starts runtime on http://localhost:8090
 # → Login: dev / dev
 
-# Docker
-docker compose up -d
+# Production (systemd)
+sudo ./scripts/install.sh
+sudo systemctl enable --now zro-runtime
 ```
 
 ## Features
@@ -46,6 +48,8 @@ docker compose up -d
 | **Multi-instance** | Multiple windows per app, each with unique instance ID |
 | **Shell API** | Apps control their window: title, badge, notifications, focus |
 | **Permissions** | Role-based access per app via `permissions.toml` |
+| **CLI tool** | `zro` — manage apps, users, config at runtime (install, update, remove) |
+| **systemd native** | `Type=notify`, watchdog, SIGHUP reload, journald logs |
 
 ## Apps
 
@@ -62,17 +66,20 @@ docker compose up -d
 
 | Doc | Description |
 |-----|-------------|
-| [Architecture](docs/architecture.md) | Architecture, protocol, IPC, auth, config, repo structure |
-| [Backend SDK](docs/backend-sdk.md) | Rust + Python + Node.js SDK reference |
-| [Frontend SDK](docs/frontend-sdk.md) | zro-client.js API, Shell API, state persistence |
-| [App Guide](docs/app-guide.md) | Create apps, manifests, URL routing, reference apps |
+| [Architecture](docs/architecture.md) | Architecture complète, protocole IPC, auth, gateway, stockage |
+| [Backend SDK](docs/backend-sdk.md) | Référence Rust + Python + Node.js, modules, auto-routage HTTP |
+| [Frontend SDK](docs/frontend-sdk.md) | ZroClient, 20 modules (transport, state, shell, etc.) |
+| [App Guide](docs/app-guide.md) | Créer une app, manifeste, patterns, référence des 7 apps |
+| [Configuration](docs/configuration.md) | runtime.toml, users.toml, permissions.toml |
+| [Deployment](docs/deployment.md) | Systemd service, CLI, production, reverse proxy |
 
 ## Testing
 
 ```bash
-cargo test                                         # 102 Rust tests
-cd sdks/python && python -m pytest tests/ -v       # 19 Python tests
-cd sdks/nodejs && npm test                         # 16 Node.js tests
+cargo test -p zro-protocol                         # 15 protocol tests
+cd sdks/python && python -m pytest tests/ -v       # 33 Python tests
+cd sdks/nodejs && npm test                         # 29 Node.js tests
+./test_e2e.sh                                      # 26 e2e tests
 ```
 
 ## License

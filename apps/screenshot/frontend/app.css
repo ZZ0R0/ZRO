@@ -1,0 +1,16 @@
+#app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+#toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--zro-bg-secondary, #181825); border-bottom: 1px solid var(--zro-border, #313244); }
+#toolbar button { padding: 7px 14px; background: transparent; border: 1px solid var(--zro-border, #313244); color: var(--zro-text, #cdd6f4); border-radius: 8px; cursor: pointer; font-size: 13px; }
+#toolbar button:hover { background: var(--zro-bg-hover, #313244); }
+#toolbar button:disabled { opacity: .4; cursor: default; }
+.accent-btn { background: var(--zro-accent, #89b4fa) !important; color: var(--zro-bg, #1e1e2e) !important; border-color: transparent !important; font-weight: 600; }
+.spacer { flex: 1; }
+#preview-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: var(--zro-bg, #1e1e2e); }
+#placeholder { text-align: center; color: var(--zro-text-secondary, #a6adc8); }
+#placeholder p:first-child { font-size: 48px; }
+#canvas { max-width: 100%; max-height: 100%; cursor: crosshair; }
+#annotation-bar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--zro-bg-secondary, #181825); border-top: 1px solid var(--zro-border, #313244); }
+.tool { padding: 6px 12px; background: transparent; border: 1px solid var(--zro-border, #313244); color: var(--zro-text-secondary, #a6adc8); border-radius: 6px; cursor: pointer; font-size: 12px; }
+.tool.active { background: var(--zro-accent, #89b4fa); color: var(--zro-bg, #1e1e2e); border-color: transparent; }
+#anno-color { width: 30px; height: 30px; border: none; border-radius: 6px; cursor: pointer; }
+#anno-size { width: 80px; accent-color: var(--zro-accent, #89b4fa); }

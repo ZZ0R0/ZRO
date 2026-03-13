@@ -3,6 +3,16 @@ slug = "files"
 name = "Files"
 version = "0.1.0"
 description = "A simple file explorer"
+icon = "📁"
+category = "system"
+keywords = ["file", "folder", "explorer", "browse", "directory"]
+mime_types = ["inode/directory"]
+
+[window]
+default_width = 900
+default_height = 600
+min_width = 400
+min_height = 300
 
 [backend]
 executable = "zro-app-files"

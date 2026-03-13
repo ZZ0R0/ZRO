@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
+    <link rel="stylesheet" href="/settings/static/app.css?v=1773378881">
+</head>
+<body>
+    <div id="app">
+        <aside id="sidebar">
+            <h2>Settings</h2>
+            <nav id="nav">
+                <button class="nav-item active" data-page="appearance">🎨 Appearance</button>
+                <button class="nav-item" data-page="notifications">🔔 Notifications</button>
+                <button class="nav-item" data-page="shortcuts">⌨️ Shortcuts</button>
+                <button class="nav-item" data-page="account">👤 Account</button>
+                <button class="nav-item" data-page="about">ℹ️ About</button>
+            </nav>
+        </aside>
+        <main id="content">
+            <!-- Appearance -->
+            <section id="page-appearance" class="page active">
+                <h3>Appearance</h3>
+                <div class="setting-group">
+                    <label>Theme</label>
+                    <div id="theme-grid" class="theme-grid"></div>
+                </div>
+                <div class="setting-group">
+                    <label>Wallpaper Color</label>
+                    <input type="color" id="wallpaper-color" value="#1e1e2e">
+                    <button id="apply-wallpaper" class="btn-sm">Apply</button>
+                </div>
+                <div class="setting-group">
+                    <label>Font Size</label>
+                    <select id="font-size">
+                        <option value="12">Small (12px)</option>
+                        <option value="14" selected>Default (14px)</option>
+                        <option value="16">Large (16px)</option>
+                        <option value="18">Extra Large (18px)</option>
+                    </select>
+                </div>
+            </section>
+            <!-- Notifications -->
+            <section id="page-notifications" class="page">
+                <h3>Notifications</h3>
+                <div class="setting-group">
+                    <label>Enable Notifications</label>
+                    <input type="checkbox" id="notif-enabled" checked>
+                </div>
+                <div class="setting-group">
+                    <label>Do Not Disturb</label>
+                    <input type="checkbox" id="notif-dnd">
+                </div>
+                <div class="setting-group">
+                    <label>Toast Duration (seconds)</label>
+                    <input type="number" id="notif-duration" value="5" min="1" max="30">
+                </div>
+            </section>
+            <!-- Shortcuts -->
+            <section id="page-shortcuts" class="page">
+                <h3>Keyboard Shortcuts</h3>
+                <table id="shortcuts-table">
+                    <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
+                    <tbody>
+                        <tr><td>Toggle Launcher</td><td>Super</td></tr>
+                        <tr><td>Close Window</td><td>Alt + F4</td></tr>
+                        <tr><td>Show Desktop</td><td>Super + D</td></tr>
+                        <tr><td>Lock Screen</td><td>Super + L</td></tr>
+                        <tr><td>File Manager</td><td>Super + E</td></tr>
+                        <tr><td>Terminal</td><td>Ctrl + Alt + T</td></tr>
+                        <tr><td>Switch Window</td><td>Alt + Tab</td></tr>
+                        <tr><td>Snap Left</td><td>Super + Left</td></tr>
+                        <tr><td>Snap Right</td><td>Super + Right</td></tr>
+                        <tr><td>Maximize</td><td>Super + Up</td></tr>
+                    </tbody>
+                </table>
+            </section>
+            <!-- Account -->
+            <section id="page-account" class="page">
+                <h3>Account</h3>
+                <div class="setting-group">
+                    <label>Username</label>
+                    <span id="acct-username">—</span>
+                </div>
+                <div class="setting-group">
+                    <label>Role</label>
+                    <span id="acct-role">—</span>
+                </div>
+            </section>
+            <!-- About -->
+            <section id="page-about" class="page">
+                <h3>About this System</h3>
+                <div class="about-grid">
+                    <div class="about-item"><span class="about-label">Hostname</span><span id="about-hostname">—</span></div>
+                    <div class="about-item"><span class="about-label">OS</span><span id="about-os">—</span></div>
+                    <div class="about-item"><span class="about-label">Kernel</span><span id="about-kernel">—</span></div>
+                    <div class="about-item"><span class="about-label">Architecture</span><span id="about-arch">—</span></div>
+                    <div class="about-item"><span class="about-label">Uptime</span><span id="about-uptime">—</span></div>
+                    <div class="about-item"><span class="about-label">Runtime</span><span id="about-runtime">—</span></div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/settings/static/app.js?v=1773378881"></script>
+</body>
+</html>

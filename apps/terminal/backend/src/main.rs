@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::Arc;
+use std::time::Duration;
 
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use serde::Deserialize;
@@ -8,6 +9,11 @@ use tokio::sync::{mpsc, Mutex, RwLock};
 
 use zro_sdk::app::{EventEmitter, ZroApp};
 use zro_sdk::context::AppContext;
+use zro_sdk::modules::dev::{DevModule, LogLevel};
+use zro_sdk::modules::ipc::IpcModule;
+use zro_sdk::modules::lifecycle::LifecycleModule;
+use zro_sdk::modules::notifications::NotificationsModule;
+use zro_sdk::modules::state::StateModule;
 
 #[derive(Deserialize)]
 struct TermInput {
@@ -28,87 +34,24 @@ struct PtySession {
 
 type Sessions = Arc<RwLock<HashMap<String, Arc<Mutex<PtySession>>>>>;
 
-/// Tracks pending cleanup timers so they can be cancelled on reconnection
-type PendingCleanups = Arc<RwLock<HashMap<String, tokio::task::JoinHandle<()>>>>;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let sessions: Sessions = Arc::new(RwLock::new(HashMap::new()));
-    let pending_cleanups: PendingCleanups = Arc::new(RwLock::new(HashMap::new()));
 
     // We'll set the emitter after build
     let emitter_holder: Arc<tokio::sync::OnceCell<EventEmitter>> =
         Arc::new(tokio::sync::OnceCell::new());
 
-    let app = ZroApp::builder()
-        // ── term_input — write to PTY ───────────────────────────────
-        .command("term_input", {
-            let sessions = sessions.clone();
-            move |params, ctx: AppContext| {
-                let sessions = sessions.clone();
-                Box::pin(async move {
-                    let input: TermInput =
-                        serde_json::from_value(params).map_err(|e| e.to_string())?;
-                    let instance_id = ctx.instance_id.unwrap_or_default();
-                    let sess_map = sessions.read().await;
-                    if let Some(session) = sess_map.get(&instance_id) {
-                        let mut session = session.lock().await;
-                        session
-                            .writer
-                            .write_all(input.data.as_bytes())
-                            .map_err(|e| format!("PTY write error: {}", e))?;
-                    }
-                    Ok(serde_json::json!({ "ok": true }))
-                })
-            }
-        })
-        // ── term_resize — resize PTY ────────────────────────────────
-        .command("term_resize", {
-            let sessions = sessions.clone();
-            move |params, ctx: AppContext| {
-                let sessions = sessions.clone();
-                Box::pin(async move {
-                    let resize: TermResize =
-                        serde_json::from_value(params).map_err(|e| e.to_string())?;
-                    let instance_id = ctx.instance_id.unwrap_or_default();
-                    let sess_map = sessions.read().await;
-                    if let Some(session) = sess_map.get(&instance_id) {
-                        let session = session.lock().await;
-                        session
-                            .pair
-                            .master
-                            .resize(PtySize {
-                                rows: resize.rows,
-                                cols: resize.cols,
-                                pixel_width: 0,
-                                pixel_height: 0,
-                            })
-                            .map_err(|e| format!("PTY resize error: {}", e))?;
-                    }
-                    Ok(serde_json::json!({ "ok": true }))
-                })
-            }
-        })
-        // ── Lifecycle: client connected → spawn PTY (or reuse existing) ──
-        .on("client:connected", {
+    let lifecycle = LifecycleModule::new()
+        .grace_period(Duration::from_secs(5))
+        .on_connect({
             let sessions = sessions.clone();
             let emitter_holder = emitter_holder.clone();
-            let pending_cleanups = pending_cleanups.clone();
             move |ctx: AppContext| {
                 let sessions = sessions.clone();
                 let emitter_holder = emitter_holder.clone();
-                let pending_cleanups = pending_cleanups.clone();
                 async move {
                     let instance_id = ctx.instance_id.clone().unwrap_or_default();
-
-                    // Cancel any pending cleanup timer for this instance (pop-out reconnect)
-                    {
-                        let mut cleanups = pending_cleanups.write().await;
-                        if let Some(handle) = cleanups.remove(&instance_id) {
-                            handle.abort();
-                            tracing::info!(instance = %instance_id, "Cancelled pending PTY cleanup (reconnection)");
-                        }
-                    }
 
                     // If a PTY session already exists, reuse it (pop-out scenario)
                     {
@@ -225,55 +168,87 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         })
-        // ── Lifecycle: client reconnected → cancel cleanup timer ──
-        .on("client:reconnected", {
-            let pending_cleanups = pending_cleanups.clone();
+        .on_disconnect({
             move |ctx: AppContext| {
-                let pending_cleanups = pending_cleanups.clone();
                 async move {
                     let instance_id = ctx.instance_id.clone().unwrap_or_default();
 
-                    // Cancel pending cleanup — the PTY session stays alive
-                    {
-                        let mut cleanups = pending_cleanups.write().await;
-                        if let Some(handle) = cleanups.remove(&instance_id) {
-                            handle.abort();
-                            tracing::info!(instance = %instance_id, "Client reconnected, cancelled PTY cleanup");
-                        }
-                    }
+                    // Track disconnect events for visibility; cleanup is done in on_timeout.
+                    tracing::info!(
+                        instance = %instance_id,
+                        "Client disconnected, awaiting lifecycle grace timeout"
+                    );
                 }
             }
         })
-        // ── Lifecycle: client disconnected → grace period then kill PTY ──
-        .on("client:disconnected", {
+        .on_timeout({
             let sessions = sessions.clone();
-            let pending_cleanups = pending_cleanups.clone();
             move |ctx: AppContext| {
                 let sessions = sessions.clone();
-                let pending_cleanups = pending_cleanups.clone();
                 async move {
                     let instance_id = ctx.instance_id.clone().unwrap_or_default();
-                    tracing::info!(instance = %instance_id, "Client disconnected, scheduling PTY cleanup (5s grace)");
 
-                    // Schedule cleanup with a grace period to allow pop-out reconnection
-                    let cleanup_sessions = sessions.clone();
-                    let cleanup_id = instance_id.clone();
-                    let cleanup_pending = pending_cleanups.clone();
-                    let handle = tokio::spawn(async move {
-                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                        // Grace period expired — actually clean up
-                        let mut sess = cleanup_sessions.write().await;
-                        if sess.remove(&cleanup_id).is_some() {
-                            tracing::info!(instance = %cleanup_id, "PTY session cleaned up (grace period expired)");
-                        }
-                        // Remove ourselves from pending cleanups
-                        let mut cleanups = cleanup_pending.write().await;
-                        cleanups.remove(&cleanup_id);
-                    });
-
-                    let mut cleanups = pending_cleanups.write().await;
-                    cleanups.insert(instance_id, handle);
+                    // Grace period expired — actually clean up
+                    let mut sess = sessions.write().await;
+                    if sess.remove(&instance_id).is_some() {
+                        tracing::info!(instance = %instance_id, "PTY session cleaned up (grace period expired)");
+                    }
                 }
+            }
+        });
+
+    let app = ZroApp::builder()
+        .module(StateModule::new())
+        .module(IpcModule::new())
+        .module(NotificationsModule::new())
+        .module(DevModule::new().level(LogLevel::Info))
+        .module(lifecycle)
+        // ── term_input — write to PTY ───────────────────────────────
+        .command("term_input", {
+            let sessions = sessions.clone();
+            move |params, ctx: AppContext| {
+                let sessions = sessions.clone();
+                Box::pin(async move {
+                    let input: TermInput =
+                        serde_json::from_value(params).map_err(|e| e.to_string())?;
+                    let instance_id = ctx.instance_id.unwrap_or_default();
+                    let sess_map = sessions.read().await;
+                    if let Some(session) = sess_map.get(&instance_id) {
+                        let mut session = session.lock().await;
+                        session
+                            .writer
+                            .write_all(input.data.as_bytes())
+                            .map_err(|e| format!("PTY write error: {}", e))?;
+                    }
+                    Ok(serde_json::json!({ "ok": true }))
+                })
+            }
+        })
+        // ── term_resize — resize PTY ────────────────────────────────
+        .command("term_resize", {
+            let sessions = sessions.clone();
+            move |params, ctx: AppContext| {
+                let sessions = sessions.clone();
+                Box::pin(async move {
+                    let resize: TermResize =
+                        serde_json::from_value(params).map_err(|e| e.to_string())?;
+                    let instance_id = ctx.instance_id.unwrap_or_default();
+                    let sess_map = sessions.read().await;
+                    if let Some(session) = sess_map.get(&instance_id) {
+                        let session = session.lock().await;
+                        session
+                            .pair
+                            .master
+                            .resize(PtySize {
+                                rows: resize.rows,
+                                cols: resize.cols,
+                                pixel_width: 0,
+                                pixel_height: 0,
+                            })
+                            .map_err(|e| format!("PTY resize error: {}", e))?;
+                    }
+                    Ok(serde_json::json!({ "ok": true }))
+                })
             }
         })
         .build()

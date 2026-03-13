@@ -3,15 +3,18 @@ resolver = "2"
 members = [
     "protocol",
     "runtime",
+    "cli",
     "sdks/rust",
     "sdks/rust/macros",
     "apps/notes/backend",
     "apps/files/backend",
     "apps/terminal/backend",
-    "apps/echo/backend",
     "apps/tasks/backend",
     "apps/shell/backend",
     "apps/custom-shell/backend",
+    "apps/settings/backend",
+    "apps/monitor/backend",
+    "apps/browser/backend",
 ]
 
 [workspace.package]

@@ -14,6 +14,8 @@ use crate::storage::SqliteStore;
 use crate::storage::session_store::SessionStore;
 use crate::storage::state_store::StateStore;
 use crate::storage::token_store::TokenStore;
+use crate::storage::preference_store::PreferenceStore;
+use crate::storage::notification_store::NotificationStore;
 use crate::permissions::PermissionsConfig;
 use crate::gateway::handlers::websocket::WsSessionManager;
 
@@ -32,6 +34,8 @@ pub struct AppState {
     pub session_store: Option<SessionStore>,
     pub state_store: Option<StateStore>,
     pub token_store: Option<TokenStore>,
+    pub preference_store: Option<PreferenceStore>,
+    pub notification_store: Option<NotificationStore>,
     pub permissions: Arc<PermissionsConfig>,
     processes: Arc<Mutex<HashMap<String, Child>>>,
 }
@@ -56,6 +60,8 @@ impl AppState {
             session_store: None,
             state_store: None,
             token_store: None,
+            preference_store: None,
+            notification_store: None,
             permissions: Arc::new(PermissionsConfig::default()),
             processes: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -72,6 +78,8 @@ impl AppState {
         self.session_store = Some(SessionStore::new(sqlite.clone()));
         self.state_store = Some(StateStore::new(sqlite.clone()));
         self.token_store = Some(TokenStore::new(sqlite.clone()));
+        self.preference_store = Some(PreferenceStore::new(sqlite.clone()));
+        self.notification_store = Some(NotificationStore::new(sqlite.clone()));
         self.sqlite_store = Some(sqlite);
         self
     }
@@ -87,6 +95,15 @@ impl AppState {
     pub async fn kill_all_processes(&self) {
         let mut procs = self.processes.lock().await;
         for (slug, mut child) in procs.drain() {
+            tracing::info!(slug = slug, "Killing backend process");
+            let _ = child.kill().await;
+        }
+    }
+
+    /// Kill a single child process by slug.
+    pub async fn kill_process(&self, slug: &str) {
+        let mut procs = self.processes.lock().await;
+        if let Some(mut child) = procs.remove(slug) {
             tracing::info!(slug = slug, "Killing backend process");
             let _ = child.kill().await;
         }

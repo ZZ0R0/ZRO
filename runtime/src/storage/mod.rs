@@ -6,6 +6,8 @@
 pub mod session_store;
 pub mod state_store;
 pub mod token_store;
+pub mod preference_store;
+pub mod notification_store;
 
 use anyhow::Result;
 use r2d2::Pool;
@@ -42,8 +44,9 @@ impl SqliteStore {
             conn.execute_batch("PRAGMA busy_timeout = 5000;")?;
             conn.execute_batch("PRAGMA foreign_keys = ON;")?;
 
-            // Apply initial schema
+            // Apply schema migrations
             conn.execute_batch(include_str!("../migrations/001_init.sql"))?;
+            conn.execute_batch(include_str!("../migrations/002_desktop.sql"))?;
         }
 
         Ok(Self { pool })
@@ -77,6 +80,12 @@ impl SqliteStore {
         // Clean up windows for inactive sessions
         conn.execute(
             "DELETE FROM active_windows WHERE session_id NOT IN (SELECT id FROM sessions WHERE is_active = 1)",
+            [],
+        )?;
+
+        // Clean up expired notifications
+        conn.execute(
+            "DELETE FROM notifications WHERE expires_at IS NOT NULL AND expires_at < datetime('now')",
             [],
         )?;
 

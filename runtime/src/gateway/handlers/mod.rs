@@ -4,3 +4,6 @@ pub mod apps;
 pub mod static_files;
 pub mod proxy;
 pub mod websocket;
+pub mod desktop;
+pub mod notifications;
+pub mod system;

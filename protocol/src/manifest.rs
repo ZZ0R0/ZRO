@@ -6,10 +6,13 @@ use std::path::Path;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AppManifest {
     pub app: AppInfo,
-    pub backend: BackendInfo,
+    #[serde(default)]
+    pub backend: Option<BackendInfo>,
     pub frontend: FrontendInfo,
     #[serde(default)]
     pub permissions: PermissionsInfo,
+    #[serde(default)]
+    pub window: WindowConfig,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -19,7 +22,81 @@ pub struct AppInfo {
     pub version: String,
     #[serde(default)]
     pub description: String,
+    /// Icon: emoji or relative path to an SVG/PNG asset.
+    #[serde(default)]
+    pub icon: String,
+    /// Application category for launcher grouping.
+    #[serde(default)]
+    pub category: AppCategory,
+    /// Search keywords for the launcher.
+    #[serde(default)]
+    pub keywords: Vec<String>,
+    /// MIME types this application can open (e.g. "text/plain", "image/*").
+    #[serde(default)]
+    pub mime_types: Vec<String>,
+    /// If true, only one instance of this app can be running at a time.
+    #[serde(default)]
+    pub single_instance: bool,
 }
+
+/// Application category for launcher grouping and filtering.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AppCategory {
+    System,
+    Tools,
+    Internet,
+    Multimedia,
+    Productivity,
+    #[default]
+    Other,
+}
+
+impl std::fmt::Display for AppCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::System => write!(f, "system"),
+            Self::Tools => write!(f, "tools"),
+            Self::Internet => write!(f, "internet"),
+            Self::Multimedia => write!(f, "multimedia"),
+            Self::Productivity => write!(f, "productivity"),
+            Self::Other => write!(f, "other"),
+        }
+    }
+}
+
+/// Default window dimensions and constraints.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct WindowConfig {
+    #[serde(default = "default_window_width")]
+    pub default_width: u32,
+    #[serde(default = "default_window_height")]
+    pub default_height: u32,
+    #[serde(default = "default_min_width")]
+    pub min_width: u32,
+    #[serde(default = "default_min_height")]
+    pub min_height: u32,
+    #[serde(default = "default_resizable")]
+    pub resizable: bool,
+}
+
+impl Default for WindowConfig {
+    fn default() -> Self {
+        Self {
+            default_width: default_window_width(),
+            default_height: default_window_height(),
+            min_width: default_min_width(),
+            min_height: default_min_height(),
+            resizable: default_resizable(),
+        }
+    }
+}
+
+fn default_window_width() -> u32 { 800 }
+fn default_window_height() -> u32 { 600 }
+fn default_min_width() -> u32 { 360 }
+fn default_min_height() -> u32 { 240 }
+fn default_resizable() -> bool { true }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BackendInfo {

@@ -3,6 +3,15 @@ slug = "tasks"
 name = "Tasks"
 version = "0.1.0"
 description = "Gestionnaire de tâches avec vue Kanban"
+icon = "✅"
+category = "productivity"
+keywords = ["task", "todo", "kanban", "project"]
+
+[window]
+default_width = 900
+default_height = 600
+min_width = 500
+min_height = 400
 
 [backend]
 executable = "zro-app-tasks"

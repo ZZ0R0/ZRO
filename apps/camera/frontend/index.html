@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
+    <link rel="stylesheet" href="/camera/static/app.css?v=1773378881">
+</head>
+<body>
+    <div id="app">
+        <main id="viewfinder">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="snap-canvas" style="display:none"></canvas>
+            <div id="no-camera" style="display:none">
+                <p>📷 Camera not available</p>
+                <p>Grant camera permission or check your device</p>
+            </div>
+        </main>
+        <footer id="controls">
+            <div class="ctrl-row">
+                <select id="camera-select"></select>
+                <select id="filter-select">
+                    <option value="none">No Filter</option>
+                    <option value="grayscale(1)">Grayscale</option>
+                    <option value="sepia(1)">Sepia</option>
+                    <option value="contrast(1.5)">High Contrast</option>
+                    <option value="brightness(1.3)">Bright</option>
+                    <option value="invert(1)">Invert</option>
+                    <option value="blur(2px)">Blur</option>
+                    <option value="saturate(2)">Saturate</option>
+                </select>
+            </div>
+            <div class="ctrl-row center">
+                <button id="btn-capture" class="capture-btn" title="Take Photo">📸</button>
+            </div>
+        </footer>
+        <aside id="gallery">
+            <div id="gallery-grid"></div>
+        </aside>
+    </div>
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/camera/static/app.js?v=1773378881"></script>
+</body>
+</html>

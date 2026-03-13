@@ -61,6 +61,27 @@ class IpcMessage:
 
 
 @dataclass
+class UserProfile:
+    """User profile with display information."""
+
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    email: Optional[str] = None
+    locale: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Optional[dict]) -> Optional[UserProfile]:
+        if not data:
+            return None
+        return cls(
+            display_name=data.get("display_name"),
+            avatar_url=data.get("avatar_url"),
+            email=data.get("email"),
+            locale=data.get("locale"),
+        )
+
+
+@dataclass
 class SessionInfo:
     """Session information attached to IPC commands."""
 
@@ -69,6 +90,7 @@ class SessionInfo:
     username: str = ""
     role: str = ""
     groups: list[str] = field(default_factory=list)
+    profile: Optional[UserProfile] = None
 
     @classmethod
     def from_dict(cls, data: Optional[dict]) -> SessionInfo:
@@ -80,4 +102,5 @@ class SessionInfo:
             username=data.get("username", ""),
             role=data.get("role", ""),
             groups=data.get("groups", []),
+            profile=UserProfile.from_dict(data.get("profile")),
         )

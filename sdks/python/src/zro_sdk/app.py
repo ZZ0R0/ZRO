@@ -15,6 +15,12 @@ from urllib.parse import unquote
 
 from .context import AppContext
 from .ipc import IpcClient
+from .module import (
+    ModuleInitContext,
+    ModuleRegistrar,
+    ZroModule,
+    resolve_module_order,
+)
 from .protocol import IpcMessage, SessionInfo
 
 CommandHandler = Callable[..., Coroutine[Any, Any, Any]]
@@ -41,6 +47,9 @@ class ZroApp:
         self._ws_event_handlers: dict[str, EventHandler] = {}
         self._lifecycle_handlers: dict[str, LifecycleHandler] = {}
         self._states: dict[type, Any] = {}
+        self._modules: list[ZroModule] = []
+        self._init_hooks: list = []
+        self._destroy_hooks: list = []
         self._ipc: Optional[IpcClient] = None
         self._slug: str = ""
         self._data_dir: Path = Path("/tmp")
@@ -98,6 +107,18 @@ class ZroApp:
         """Register a shared state object accessible via ``ctx.state(Type)``."""
         self._states[type(initial)] = initial
 
+    def module(self, mod: ZroModule) -> "ZroApp":
+        """Register a module. Modules are resolved in dependency order at startup.
+
+        Usage::
+
+            app = ZroApp()
+            app.module(GreetModule())
+            app.run()
+        """
+        self._modules.append(mod)
+        return self
+
     # ── Run ──────────────────────────────────────────────
 
     def run(self) -> None:
@@ -138,6 +159,33 @@ class ZroApp:
 
         print(f"[ZRO SDK] App {self._slug} connected", file=sys.stderr)
 
+        # ── Resolve and register modules ─────────────────
+        if self._modules:
+            order = resolve_module_order(self._modules)
+            for idx in order:
+                mod = self._modules[idx]
+                meta = mod.meta
+                print(f"[ZRO SDK] Registering module: {meta.name} v{meta.version}", file=sys.stderr)
+
+                registrar = ModuleRegistrar()
+                mod.register(registrar)
+
+                # Merge registrations into the app
+                self._commands.update(registrar.commands)
+                self._ws_event_handlers.update(registrar.event_handlers)
+                self._lifecycle_handlers.update(registrar.lifecycle_handlers)
+                self._init_hooks.extend(registrar.init_hooks)
+                self._destroy_hooks.extend(registrar.destroy_hooks)
+
+        # ── Run module init hooks ────────────────────────
+        if self._init_hooks:
+            init_ctx = ModuleInitContext(
+                slug=self._slug,
+                data_dir=self._data_dir,
+            )
+            for hook in self._init_hooks:
+                await hook(init_ctx)
+
         # Handle SIGTERM gracefully
         loop = asyncio.get_running_loop()
         loop.add_signal_handler(signal.SIGTERM, lambda: asyncio.ensure_future(self._shutdown()))
@@ -153,6 +201,13 @@ class ZroApp:
             print(f"[ZRO SDK] IPC error: {e}", file=sys.stderr)
 
     async def _shutdown(self) -> None:
+        # Run module destroy hooks in reverse order
+        for hook in reversed(self._destroy_hooks):
+            try:
+                await hook()
+            except Exception as e:
+                print(f"[ZRO SDK] Module destroy error: {e}", file=sys.stderr)
+
         if self._ipc:
             ack = IpcMessage.new("ShutdownAck", {"status": "ok"})
             try:
@@ -403,10 +458,16 @@ class ZroApp:
         payload: Any = None,
         target_instance: Optional[str] = None,
         broadcast: bool = False,
+        target_session: Optional[str] = None,
+        system: bool = False,
     ) -> None:
         if not self._ipc:
             return
-        if broadcast:
+        if system:
+            target = {"type": "system"}
+        elif target_session:
+            target = {"type": "session", "session_id": target_session}
+        elif broadcast:
             target = {"type": "broadcast"}
         elif target_instance:
             target = {"type": "instance", "instance_id": target_instance}

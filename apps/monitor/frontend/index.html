@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monitor — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
+    <link rel="stylesheet" href="/monitor/static/app.css?v=1773378881">
+</head>
+<body>
+    <div id="app">
+        <header id="tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="processes">Processes</button>
+            <button class="tab" data-tab="resources">Resources</button>
+            <button class="tab" data-tab="disks">Disks</button>
+        </header>
+        <main id="content">
+            <!-- Overview -->
+            <section id="tab-overview" class="tab-panel active">
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <span class="metric-label">CPU</span>
+                        <div class="gauge"><svg viewBox="0 0 100 50"><path class="gauge-bg" d="M10,45 A35,35 0 0,1 90,45"/><path id="gauge-cpu" class="gauge-fill" d="M10,45 A35,35 0 0,1 90,45"/></svg><span id="val-cpu">0%</span></div>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Memory</span>
+                        <div class="gauge"><svg viewBox="0 0 100 50"><path class="gauge-bg" d="M10,45 A35,35 0 0,1 90,45"/><path id="gauge-mem" class="gauge-fill" d="M10,45 A35,35 0 0,1 90,45"/></svg><span id="val-mem">0%</span></div>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Load Average</span>
+                        <div class="load-vals"><span id="val-load1">0</span> <span id="val-load5">0</span> <span id="val-load15">0</span></div>
+                        <div class="load-labels"><span>1m</span><span>5m</span><span>15m</span></div>
+                    </div>
+                </div>
+                <div id="cpu-cores" class="cores-grid"></div>
+            </section>
+            <!-- Processes -->
+            <section id="tab-processes" class="tab-panel">
+                <div class="proc-toolbar"><input type="text" id="proc-search" placeholder="Filter processes…"></div>
+                <div class="proc-table-wrap">
+                    <table id="proc-table">
+                        <thead><tr><th>PID</th><th>User</th><th>CPU%</th><th>Mem%</th><th>State</th><th>Command</th></tr></thead>
+                        <tbody id="proc-body"></tbody>
+                    </table>
+                </div>
+            </section>
+            <!-- Resources -->
+            <section id="tab-resources" class="tab-panel">
+                <h3>Memory</h3>
+                <div class="bar-group">
+                    <div class="bar-label"><span>RAM</span><span id="ram-detail">—</span></div>
+                    <div class="bar"><div id="bar-ram" class="bar-fill"></div></div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label"><span>Swap</span><span id="swap-detail">—</span></div>
+                    <div class="bar"><div id="bar-swap" class="bar-fill accent2"></div></div>
+                </div>
+                <h3 style="margin-top:24px">CPU History</h3>
+                <canvas id="cpu-chart" height="150"></canvas>
+            </section>
+            <!-- Disks -->
+            <section id="tab-disks" class="tab-panel">
+                <div id="disk-list"></div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/monitor/static/app.js?v=1773378881"></script>
+</body>
+</html>

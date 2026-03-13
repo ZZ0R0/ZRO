@@ -33,7 +33,6 @@
     const fieldDue      = document.getElementById('task-due');
     const btnDelete     = document.getElementById('btn-delete-task');
     const btnCancel     = document.getElementById('btn-cancel');
-    const btnSave       = document.getElementById('btn-save');
 
     // ── Utility ─────────────────────────────────────────────
 
@@ -369,7 +368,6 @@
     });
     modalClose.addEventListener('click', closeModal);
     btnCancel.addEventListener('click', closeModal);
-    btnSave.addEventListener('click', saveTask);
     btnDelete.addEventListener('click', deleteTask);
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) closeModal();

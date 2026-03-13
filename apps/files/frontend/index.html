@@ -4,11 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Files — zro</title>
-    <link rel="stylesheet" href="/static/zro-base.css">
-    <link rel="stylesheet" href="/files/static/app.css">
+    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
+    <link rel="stylesheet" href="/files/static/app.css?v=1773378881">
 </head>
 <body>
     <div id="app">
+        <div id="toolbar">
+            <button id="btn-back" title="Go back">←</button>
+            <input id="path-input" type="text" value="/" spellcheck="false" />
+            <button id="btn-go" title="Navigate">→</button>
+        </div>
         <nav id="breadcrumb"></nav>
         <div id="main">
             <div id="file-list">
@@ -37,13 +42,14 @@
     <!-- Context menu -->
     <div id="ctx-menu" class="hidden">
         <div class="ctx-item" data-action="open">Open</div>
+        <div class="ctx-item" data-action="download">Download</div>
         <div class="ctx-item" data-action="delete">Delete</div>
         <div class="ctx-sep"></div>
         <div class="ctx-item" data-action="new-file">New File</div>
         <div class="ctx-item" data-action="new-folder">New Folder</div>
     </div>
 
-    <script src="/static/zro-client.js"></script>
-    <script src="/files/static/app.js"></script>
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/files/static/app.js?v=1773378881"></script>
 </body>
 </html>

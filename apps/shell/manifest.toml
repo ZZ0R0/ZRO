@@ -3,6 +3,10 @@ slug = "shell"
 name = "ZRO Shell Desktop"
 version = "0.1.0"
 description = "Desktop Window Manager — fenêtres, taskbar, lanceur d'apps"
+icon = "🖥️"
+category = "system"
+keywords = ["shell", "desktop", "window", "manager"]
+single_instance = true
 
 [backend]
 executable = "zro-app-shell"

@@ -20,6 +20,26 @@ impl std::fmt::Display for SessionId {
     }
 }
 
+/// Extended user profile information (display name, avatar, locale…).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct UserProfile {
+    /// Human-readable display name (falls back to username if None).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// Relative URL or base64-encoded avatar image.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<String>,
+    /// Email address.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    /// BCP-47 locale tag (e.g. "fr-FR").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locale: Option<String>,
+    /// IANA timezone (e.g. "Europe/Paris").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timezone: Option<String>,
+}
+
 /// Session information attached to IPC messages.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SessionInfo {
@@ -30,4 +50,7 @@ pub struct SessionInfo {
     /// User groups for access control.
     #[serde(default)]
     pub groups: Vec<String>,
+    /// Optional extended user profile.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<UserProfile>,
 }

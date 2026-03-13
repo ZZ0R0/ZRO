@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
+    <link rel="stylesheet" href="/calculator/static/app.css?v=1773378881">
+</head>
+<body>
+    <div id="app">
+        <div id="mode-bar">
+            <button class="mode active" data-mode="basic">Basic</button>
+            <button class="mode" data-mode="scientific">Scientific</button>
+        </div>
+        <div id="display">
+            <div id="expr"></div>
+            <div id="result">0</div>
+        </div>
+        <div id="keypad-basic" class="keypad visible">
+            <button class="fn" data-v="C">C</button>
+            <button class="fn" data-v="±">±</button>
+            <button class="fn" data-v="%">%</button>
+            <button class="op" data-v="÷">÷</button>
+            <button data-v="7">7</button>
+            <button data-v="8">8</button>
+            <button data-v="9">9</button>
+            <button class="op" data-v="×">×</button>
+            <button data-v="4">4</button>
+            <button data-v="5">5</button>
+            <button data-v="6">6</button>
+            <button class="op" data-v="-">−</button>
+            <button data-v="1">1</button>
+            <button data-v="2">2</button>
+            <button data-v="3">3</button>
+            <button class="op" data-v="+">+</button>
+            <button class="wide" data-v="0">0</button>
+            <button data-v=".">.</button>
+            <button class="eq" data-v="=">=</button>
+        </div>
+        <div id="keypad-scientific" class="keypad">
+            <button class="fn" data-v="C">C</button>
+            <button class="fn" data-v="(">(</button>
+            <button class="fn" data-v=")">)</button>
+            <button class="fn" data-v="%">%</button>
+            <button class="op" data-v="÷">÷</button>
+            <button class="sci" data-v="sin">sin</button>
+            <button data-v="7">7</button>
+            <button data-v="8">8</button>
+            <button data-v="9">9</button>
+            <button class="op" data-v="×">×</button>
+            <button class="sci" data-v="cos">cos</button>
+            <button data-v="4">4</button>
+            <button data-v="5">5</button>
+            <button data-v="6">6</button>
+            <button class="op" data-v="-">−</button>
+            <button class="sci" data-v="tan">tan</button>
+            <button data-v="1">1</button>
+            <button data-v="2">2</button>
+            <button data-v="3">3</button>
+            <button class="op" data-v="+">+</button>
+            <button class="sci" data-v="√">√</button>
+            <button data-v="0">0</button>
+            <button data-v=".">.</button>
+            <button class="sci" data-v="^">x^y</button>
+            <button class="eq" data-v="=">=</button>
+        </div>
+    </div>
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/calculator/static/app.js?v=1773378881"></script>
+</body>
+</html>

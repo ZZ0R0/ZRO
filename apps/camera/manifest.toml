@@ -1,0 +1,21 @@
+[app]
+slug = "camera"
+name = "Camera"
+version = "0.1.0"
+description = "Webcam capture for photos and video"
+icon = "📷"
+category = "multimedia"
+keywords = ["camera", "webcam", "photo", "video", "capture"]
+
+[window]
+default_width = 720
+default_height = 560
+min_width = 400
+min_height = 300
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]

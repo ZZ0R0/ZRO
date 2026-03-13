@@ -1,0 +1,20 @@
+#app { display: flex; flex-direction: column; height: 100vh; max-width: 400px; margin: 0 auto; background: var(--zro-bg, #1e1e2e); }
+#mode-bar { display: flex; border-bottom: 1px solid var(--zro-border, #313244); }
+.mode { flex: 1; padding: 10px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--zro-text-secondary, #a6adc8); cursor: pointer; font-size: 14px; }
+.mode.active { color: var(--zro-accent, #89b4fa); border-bottom-color: var(--zro-accent, #89b4fa); }
+#display { padding: 20px 16px 12px; text-align: right; }
+#expr { font-size: 14px; color: var(--zro-text-secondary, #a6adc8); min-height: 20px; word-break: break-all; }
+#result { font-size: 40px; font-weight: 700; color: var(--zro-text, #cdd6f4); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; }
+.keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; flex: 1; display: none; }
+.keypad.visible { display: grid; }
+#keypad-scientific { grid-template-columns: repeat(5, 1fr); }
+.keypad button { padding: 16px 0; border: none; border-radius: 10px; font-size: 20px; cursor: pointer; background: var(--zro-bg-secondary, #181825); color: var(--zro-text, #cdd6f4); transition: background .1s; }
+.keypad button:hover { background: var(--zro-bg-hover, #313244); }
+.keypad button:active { background: var(--zro-accent, #89b4fa); color: var(--zro-bg, #1e1e2e); }
+.keypad .fn { background: var(--zro-bg-hover, #313244); color: var(--zro-text-secondary, #a6adc8); }
+.keypad .op { background: var(--zro-accent, #89b4fa); color: var(--zro-bg, #1e1e2e); font-weight: 700; }
+.keypad .op:hover { opacity: .85; }
+.keypad .eq { background: #a6e3a1; color: var(--zro-bg, #1e1e2e); font-weight: 700; }
+.keypad .eq:hover { opacity: .85; }
+.keypad .sci { background: var(--zro-bg-hover, #313244); color: #f9e2af; font-size: 14px; }
+.keypad .wide { grid-column: span 2; }

@@ -1,0 +1,7 @@
+# /etc/tmpfiles.d/zro.conf
+# Create runtime directories for ZRO
+#
+# Type  Path             Mode  User  Group  Age
+d       /run/zro         0755  zro   zro    -
+d       /tmp/zro         0755  zro   zro    -
+d       /tmp/zro/ipc     0750  zro   zro    -

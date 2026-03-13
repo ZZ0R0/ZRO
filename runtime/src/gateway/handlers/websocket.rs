@@ -196,6 +196,12 @@ impl WsSessionManager {
         }
     }
 
+    /// Count the number of active WS sessions.
+    pub async fn connection_count(&self) -> usize {
+        let sessions = self.sessions.read().await;
+        sessions.len()
+    }
+
     /// Clean up disconnected instances older than the given duration.
     pub async fn cleanup_disconnected(&self, max_age: std::time::Duration) {
         let mut disc = self.disconnected_instances.write().await;
@@ -286,6 +292,25 @@ impl WsSessionManager {
             if session.user_id == user_id {
                 let _ = session.ws_sender.send(text.clone());
             }
+        }
+    }
+
+    /// Broadcast to a specific WS session (all apps within that session).
+    /// Used for cross-app events scoped to a user session (theme change, clipboard…).
+    pub async fn broadcast_to_session(&self, session_id: &str, msg: &serde_json::Value) {
+        let sessions = self.sessions.read().await;
+        let text = serde_json::to_string(msg).unwrap_or_default();
+        if let Some(session) = sessions.get(session_id) {
+            let _ = session.ws_sender.send(text);
+        }
+    }
+
+    /// Broadcast to every connected WS client (system-wide event).
+    pub async fn broadcast_to_all(&self, msg: &serde_json::Value) {
+        let sessions = self.sessions.read().await;
+        let text = serde_json::to_string(msg).unwrap_or_default();
+        for session in sessions.values() {
+            let _ = session.ws_sender.send(text.clone());
         }
     }
 
@@ -451,6 +476,42 @@ async fn handle_multiplexed_ws(
                             "reconnected": is_reconnect,
                         }))
                         .await;
+
+                        // Send __desktop:init with user context
+                        {
+                            let mut init_data = json!({
+                                "user": {
+                                    "user_id": session_info.user_id,
+                                    "username": session_info.username,
+                                    "role": session_info.role,
+                                    "groups": session_info.groups,
+                                },
+                                "theme": null,
+                                "preferences": {},
+                                "unread_notifications": 0,
+                            });
+
+                            if let Some(ref pref_store) = state.preference_store {
+                                if let Ok(prefs) = pref_store.get_all(&session_info.user_id) {
+                                    init_data["preferences"] = json!(prefs);
+                                    if let Some(theme) = prefs.get("theme") {
+                                        init_data["theme"] = json!(theme);
+                                    }
+                                }
+                            }
+                            if let Some(ref notif_store) = state.notification_store {
+                                if let Ok(count) = notif_store.count_unread(&session_info.user_id) {
+                                    init_data["unread_notifications"] = json!(count);
+                                }
+                            }
+
+                            state.ws_manager.send_to_instance(&instance_id, &json!({
+                                "type": "event",
+                                "instance": instance_id,
+                                "event": "__desktop:init",
+                                "payload": init_data,
+                            })).await;
+                        }
                     }
 
                     // ── Unregister an app instance ───────────────
@@ -544,8 +605,23 @@ async fn handle_multiplexed_ws(
                                 .unwrap_or_default()
                         };
 
-                        // ── Internal commands (__ prefix) ──────────
-                        if command.starts_with("__") {
+                        // ── Runtime-intercepted commands ─────────────
+                        if matches!(
+                            command.as_str(),
+                            "__state:save"
+                                | "__state:restore"
+                                | "__state:delete"
+                                | "__state:keys"
+                                | "__pref:get"
+                                | "__pref:set"
+                                | "__pref:get_all"
+                                | "__notify:list"
+                                | "__notify:read"
+                                | "__notify:read_all"
+                                | "__desktop:app_metadata"
+                                | "__desktop:apps_for_mime"
+                                | "__desktop:system_info"
+                        ) {
                             let ws_resp = handle_internal_command(
                                 &command,
                                 &params,
@@ -762,8 +838,8 @@ async fn send_to_session(state: &AppState, ws_session_id: &str, msg: &serde_json
     }
 }
 
-/// Handle internal commands (__ prefix) that are intercepted by the runtime
-/// rather than forwarded to app backends.
+/// Handle runtime-intercepted commands.
+/// Covers __state:*, __pref:*, __notify:*, and __desktop:* families.
 async fn handle_internal_command(
     command: &str,
     params: &serde_json::Value,
@@ -773,63 +849,203 @@ async fn handle_internal_command(
     instance_id: &str,
     state: &AppState,
 ) -> serde_json::Value {
-    let state_store = match &state.state_store {
-        Some(s) => s,
-        None => {
-            return json!({
-                "type": "response",
-                "id": client_id,
-                "instance": instance_id,
-                "error": "Storage not available",
-            });
+    match command {
+        // ── State commands ──────────────────────────────────────────
+        "__state:save" | "__state:restore" | "__state:delete" | "__state:keys" => {
+            let state_store = match &state.state_store {
+                Some(s) => s,
+                None => return err_resp(client_id, instance_id, "Storage not available"),
+            };
+            handle_state_command(command, params, session, app_slug, client_id, instance_id, state_store)
         }
-    };
 
+        // ── Preference commands ─────────────────────────────────────
+        "__pref:get" => {
+            let store = match &state.preference_store {
+                Some(s) => s,
+                None => return err_resp(client_id, instance_id, "Storage not available"),
+            };
+            let key = params.get("key").and_then(|v| v.as_str()).unwrap_or("");
+            if key.is_empty() {
+                return err_resp(client_id, instance_id, "key is required");
+            }
+            match store.get(&session.user_id, key) {
+                Ok(Some(v)) => ok_resp(client_id, instance_id, json!(v)),
+                Ok(None) => ok_resp(client_id, instance_id, json!(null)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
+            }
+        }
+        "__pref:set" => {
+            let store = match &state.preference_store {
+                Some(s) => s,
+                None => return err_resp(client_id, instance_id, "Storage not available"),
+            };
+            let key = params.get("key").and_then(|v| v.as_str()).unwrap_or("");
+            let value = params.get("value").and_then(|v| v.as_str()).unwrap_or("");
+            if key.is_empty() {
+                return err_resp(client_id, instance_id, "key is required");
+            }
+            match store.set(&session.user_id, key, value) {
+                Ok(()) => ok_resp(client_id, instance_id, json!(true)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
+            }
+        }
+        "__pref:get_all" => {
+            let store = match &state.preference_store {
+                Some(s) => s,
+                None => return err_resp(client_id, instance_id, "Storage not available"),
+            };
+            match store.get_all(&session.user_id) {
+                Ok(prefs) => ok_resp(client_id, instance_id, json!(prefs)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
+            }
+        }
+
+        // ── Notification commands ───────────────────────────────────
+        "__notify:list" => {
+            let store = match &state.notification_store {
+                Some(s) => s,
+                None => return err_resp(client_id, instance_id, "Storage not available"),
+            };
+            let unread_only = params.get("unread_only").and_then(|v| v.as_bool()).unwrap_or(true);
+            let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(100) as u32;
+            match store.get(&session.user_id, unread_only, limit) {
+                Ok(notifs) => {
+                    let count = store.count_unread(&session.user_id).unwrap_or(0);
+                    ok_resp(client_id, instance_id, json!({"notifications": notifs, "unread_count": count}))
+                }
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
+            }
+        }
+        "__notify:read" => {
+            let store = match &state.notification_store {
+                Some(s) => s,
+                None => return err_resp(client_id, instance_id, "Storage not available"),
+            };
+            let id = params.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            if id.is_empty() {
+                return err_resp(client_id, instance_id, "id is required");
+            }
+            match store.mark_read(id, &session.user_id) {
+                Ok(()) => ok_resp(client_id, instance_id, json!(true)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
+            }
+        }
+        "__notify:read_all" => {
+            let store = match &state.notification_store {
+                Some(s) => s,
+                None => return err_resp(client_id, instance_id, "Storage not available"),
+            };
+            match store.mark_all_read(&session.user_id) {
+                Ok(()) => ok_resp(client_id, instance_id, json!(true)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
+            }
+        }
+
+        // ── Desktop commands ────────────────────────────────────────
+        "__desktop:app_metadata" => {
+            let metadata = state.registry.all_app_metadata().await;
+            ok_resp(client_id, instance_id, json!(metadata))
+        }
+        "__desktop:apps_for_mime" => {
+            let mime = params.get("mime").and_then(|v| v.as_str()).unwrap_or("");
+            if mime.is_empty() {
+                return err_resp(client_id, instance_id, "mime is required");
+            }
+            let apps = state.registry.apps_for_mime(mime).await;
+            let metadata: Vec<serde_json::Value> = apps.iter().map(|e| {
+                let a = &e.manifest.app;
+                json!({"slug": a.slug, "name": a.name, "icon": a.icon, "category": format!("{:?}", a.category)})
+            }).collect();
+            ok_resp(client_id, instance_id, json!(metadata))
+        }
+        "__desktop:system_info" => {
+            let uptime = state.start_time.elapsed().as_secs();
+            let connections = state.ws_manager.connection_count().await;
+            ok_resp(client_id, instance_id, json!({
+                "runtime_uptime_secs": uptime,
+                "connections": connections,
+            }))
+        }
+
+        _ => {
+            unreachable!("handle_internal_command called with unexpected command: {}", command)
+        }
+    }
+}
+
+/// Build a success response for WS internal command.
+fn ok_resp(client_id: &str, instance_id: &str, result: serde_json::Value) -> serde_json::Value {
+    json!({
+        "type": "response",
+        "id": client_id,
+        "instance": instance_id,
+        "result": result,
+    })
+}
+
+/// Build an error response for WS internal command.
+fn err_resp(client_id: &str, instance_id: &str, error: &str) -> serde_json::Value {
+    json!({
+        "type": "response",
+        "id": client_id,
+        "instance": instance_id,
+        "error": error,
+    })
+}
+
+/// Handle __state:* commands (factored out from the main handler).
+fn handle_state_command(
+    command: &str,
+    params: &serde_json::Value,
+    session: &SessionInfo,
+    app_slug: &str,
+    client_id: &str,
+    instance_id: &str,
+    state_store: &crate::storage::state_store::StateStore,
+) -> serde_json::Value {
     match command {
         "__state:save" => {
             let key = params.get("key").and_then(|v| v.as_str()).unwrap_or("");
             let value = params.get("value").and_then(|v| v.as_str()).unwrap_or("");
             if key.is_empty() {
-                return json!({"type": "response", "id": client_id, "instance": instance_id, "error": "key is required"});
+                return err_resp(client_id, instance_id, "key is required");
             }
-            // 1 MiB limit per value
             if value.len() > 1_048_576 {
-                return json!({"type": "response", "id": client_id, "instance": instance_id, "error": "value too large (max 1 MiB)"});
+                return err_resp(client_id, instance_id, "value too large (max 1 MiB)");
             }
             match state_store.save(&session.user_id, app_slug, key, value) {
-                Ok(()) => json!({"type": "response", "id": client_id, "instance": instance_id, "result": true}),
-                Err(e) => json!({"type": "response", "id": client_id, "instance": instance_id, "error": e.to_string()}),
+                Ok(()) => ok_resp(client_id, instance_id, json!(true)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
             }
         }
         "__state:restore" => {
             let key = params.get("key").and_then(|v| v.as_str()).unwrap_or("");
             if key.is_empty() {
-                return json!({"type": "response", "id": client_id, "instance": instance_id, "error": "key is required"});
+                return err_resp(client_id, instance_id, "key is required");
             }
             match state_store.restore(&session.user_id, app_slug, key) {
-                Ok(Some(val)) => json!({"type": "response", "id": client_id, "instance": instance_id, "result": val}),
-                Ok(None) => json!({"type": "response", "id": client_id, "instance": instance_id, "result": null}),
-                Err(e) => json!({"type": "response", "id": client_id, "instance": instance_id, "error": e.to_string()}),
+                Ok(Some(val)) => ok_resp(client_id, instance_id, json!(val)),
+                Ok(None) => ok_resp(client_id, instance_id, json!(null)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
             }
         }
         "__state:delete" => {
             let key = params.get("key").and_then(|v| v.as_str()).unwrap_or("");
             if key.is_empty() {
-                return json!({"type": "response", "id": client_id, "instance": instance_id, "error": "key is required"});
+                return err_resp(client_id, instance_id, "key is required");
             }
             match state_store.delete(&session.user_id, app_slug, key) {
-                Ok(()) => json!({"type": "response", "id": client_id, "instance": instance_id, "result": true}),
-                Err(e) => json!({"type": "response", "id": client_id, "instance": instance_id, "error": e.to_string()}),
+                Ok(()) => ok_resp(client_id, instance_id, json!(true)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
             }
         }
         "__state:keys" => {
             match state_store.list_keys(&session.user_id, app_slug) {
-                Ok(keys) => json!({"type": "response", "id": client_id, "instance": instance_id, "result": keys}),
-                Err(e) => json!({"type": "response", "id": client_id, "instance": instance_id, "error": e.to_string()}),
+                Ok(keys) => ok_resp(client_id, instance_id, json!(keys)),
+                Err(e) => err_resp(client_id, instance_id, &e.to_string()),
             }
         }
-        _ => {
-            json!({"type": "response", "id": client_id, "instance": instance_id, "error": format!("Unknown internal command: {}", command)})
-        }
+        _ => unreachable!(),
     }
 }

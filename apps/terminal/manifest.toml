@@ -3,6 +3,15 @@ slug = "terminal"
 name = "Terminal"
 version = "0.1.0"
 description = "A web terminal"
+icon = "⬛"
+category = "system"
+keywords = ["terminal", "console", "command", "bash", "shell"]
+
+[window]
+default_width = 800
+default_height = 500
+min_width = 400
+min_height = 200
 
 [backend]
 executable = "zro-app-terminal"

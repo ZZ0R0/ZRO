@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screenshot — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
+    <link rel="stylesheet" href="/screenshot/static/app.css?v=1773378881">
+</head>
+<body>
+    <div id="app">
+        <header id="toolbar">
+            <button id="btn-capture" class="accent-btn">📷 Capture Screen</button>
+            <button id="btn-delay" title="3s delay">⏱ Delay 3s</button>
+            <div class="spacer"></div>
+            <button id="btn-save" disabled>💾 Save</button>
+            <button id="btn-copy" disabled>📋 Copy</button>
+        </header>
+        <main id="preview-area">
+            <div id="placeholder">
+                <p>📸</p>
+                <p>Click "Capture Screen" to take a screenshot</p>
+            </div>
+            <canvas id="canvas" style="display:none"></canvas>
+        </main>
+        <footer id="annotation-bar" style="display:none">
+            <button class="tool active" data-tool="select">↖ Select</button>
+            <button class="tool" data-tool="pen">✏ Pen</button>
+            <button class="tool" data-tool="rect">▭ Rectangle</button>
+            <button class="tool" data-tool="text">T Text</button>
+            <input type="color" id="anno-color" value="#f38ba8">
+            <input type="range" id="anno-size" min="1" max="10" value="3">
+            <button id="btn-undo">↩ Undo</button>
+        </footer>
+    </div>
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/screenshot/static/app.js?v=1773378881"></script>
+</body>
+</html>

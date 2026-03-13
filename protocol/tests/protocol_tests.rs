@@ -39,6 +39,7 @@ fn test_session_info_serde() {
         username: "admin".to_string(),
         role: "admin".to_string(),
         groups: vec![],
+        profile: None,
     };
     let json = serde_json::to_string(&info).unwrap();
     let back: SessionInfo = serde_json::from_str(&json).unwrap();
@@ -117,6 +118,7 @@ fn test_http_request_payload_serde() {
         username: "admin".to_string(),
         role: "admin".to_string(),
         groups: vec![],
+        profile: None,
     };
     let p = HttpRequestPayload {
         method: "POST".to_string(),
@@ -160,6 +162,7 @@ fn test_ws_in_payload_serde() {
         username: "user".to_string(),
         role: "user".to_string(),
         groups: vec![],
+        profile: None,
     };
     let p = WsInPayload {
         instance_id: "inst-1".to_string(),
@@ -234,6 +237,7 @@ fn test_client_connected_payload_serde() {
         username: "user".to_string(),
         role: "user".to_string(),
         groups: vec![],
+        profile: None,
     };
     let p = ClientConnectedPayload {
         instance_id: "inst-1".to_string(),
@@ -324,19 +328,25 @@ fn valid_manifest() -> AppManifest {
             name: "My App".to_string(),
             version: "0.1.0".to_string(),
             description: String::new(),
+            icon: String::new(),
+            category: AppCategory::default(),
+            keywords: vec![],
+            mime_types: vec![],
+            single_instance: false,
         },
-        backend: BackendInfo {
+        backend: Some(BackendInfo {
             executable: "my-app-backend".to_string(),
             transport: "unix_socket".to_string(),
             command: None,
             args: vec![],
-        },
+        }),
         frontend: FrontendInfo {
             directory: "frontend".to_string(),
             index: "index.html".to_string(),
             dev: None,
         },
         permissions: PermissionsInfo::default(),
+        window: WindowConfig::default(),
     }
 }
 
@@ -400,7 +410,7 @@ fn test_manifest_toml_roundtrip() {
     let toml_str = toml::to_string(&m).unwrap();
     let back: AppManifest = toml::from_str(&toml_str).unwrap();
     assert_eq!(back.app.slug, "my-app");
-    assert_eq!(back.backend.executable, "my-app-backend");
+    assert_eq!(back.backend.as_ref().unwrap().executable, "my-app-backend");
     assert!(back.validate().is_ok());
 }
 
@@ -419,7 +429,7 @@ executable = "test-backend"
 directory = "frontend"
 "#;
     let manifest: AppManifest = toml::from_str(toml_str).unwrap();
-    assert_eq!(manifest.backend.transport, "unix_socket"); // default
+    assert_eq!(manifest.backend.as_ref().unwrap().transport, "unix_socket"); // default
     assert_eq!(manifest.frontend.index, "index.html"); // default
     assert!(manifest.permissions.roles.is_empty()); // default
     assert!(manifest.validate().is_ok());
@@ -443,6 +453,227 @@ fn test_constants_sane_values() {
     assert_ne!(DEFAULT_PORT, 0);
     assert!(!SESSION_COOKIE_NAME.is_empty());
     assert!(!IPC_SOCKET_DIR.is_empty());
+    assert!(MAX_UPLOAD_SIZE > 0);
+    assert!(MAX_UPLOAD_SIZE <= MAX_MESSAGE_SIZE);
+}
+
+// ── UserProfile tests ───────────────────────────────────────────
+
+#[test]
+fn test_user_profile_default() {
+    let profile = UserProfile::default();
+    assert!(profile.display_name.is_none());
+    assert!(profile.avatar.is_none());
+    assert!(profile.email.is_none());
+    assert!(profile.locale.is_none());
+    assert!(profile.timezone.is_none());
+}
+
+#[test]
+fn test_user_profile_serde() {
+    let profile = UserProfile {
+        display_name: Some("Jean Dupont".to_string()),
+        avatar: Some("/avatars/jean.png".to_string()),
+        email: Some("jean@example.com".to_string()),
+        locale: Some("fr-FR".to_string()),
+        timezone: Some("Europe/Paris".to_string()),
+    };
+    let json = serde_json::to_string(&profile).unwrap();
+    let back: UserProfile = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.display_name.as_deref(), Some("Jean Dupont"));
+    assert_eq!(back.locale.as_deref(), Some("fr-FR"));
+}
+
+#[test]
+fn test_user_profile_none_fields_omitted_in_json() {
+    let profile = UserProfile {
+        display_name: Some("Test".to_string()),
+        ..Default::default()
+    };
+    let json = serde_json::to_string(&profile).unwrap();
+    assert!(json.contains("display_name"));
+    assert!(!json.contains("avatar"));
+    assert!(!json.contains("email"));
+}
+
+#[test]
+fn test_session_info_with_profile() {
+    let info = SessionInfo {
+        session_id: SessionId("s1".to_string()),
+        user_id: "u1".to_string(),
+        username: "admin".to_string(),
+        role: "admin".to_string(),
+        groups: vec!["devs".to_string()],
+        profile: Some(UserProfile {
+            display_name: Some("Admin User".to_string()),
+            ..Default::default()
+        }),
+    };
+    let json = serde_json::to_string(&info).unwrap();
+    let back: SessionInfo = serde_json::from_str(&json).unwrap();
+    assert!(back.profile.is_some());
+    assert_eq!(back.profile.unwrap().display_name.as_deref(), Some("Admin User"));
+}
+
+#[test]
+fn test_session_info_without_profile_deserialize() {
+    // Backward compat: old payloads without "profile" field
+    let json = r#"{"session_id":"s1","user_id":"u1","username":"admin","role":"admin","groups":[]}"#;
+    let info: SessionInfo = serde_json::from_str(json).unwrap();
+    assert!(info.profile.is_none());
+}
+
+// ── AppCategory tests ───────────────────────────────────────────
+
+#[test]
+fn test_app_category_default() {
+    let cat = AppCategory::default();
+    assert_eq!(cat, AppCategory::Other);
+}
+
+#[test]
+fn test_app_category_serde() {
+    let cat = AppCategory::System;
+    let json = serde_json::to_string(&cat).unwrap();
+    assert_eq!(json, "\"system\"");
+    let back: AppCategory = serde_json::from_str(&json).unwrap();
+    assert_eq!(back, AppCategory::System);
+}
+
+#[test]
+fn test_app_category_display() {
+    assert_eq!(format!("{}", AppCategory::Tools), "tools");
+    assert_eq!(format!("{}", AppCategory::Internet), "internet");
+    assert_eq!(format!("{}", AppCategory::Multimedia), "multimedia");
+    assert_eq!(format!("{}", AppCategory::Productivity), "productivity");
+    assert_eq!(format!("{}", AppCategory::Other), "other");
+}
+
+// ── WindowConfig tests ──────────────────────────────────────────
+
+#[test]
+fn test_window_config_default() {
+    let wc = WindowConfig::default();
+    assert_eq!(wc.default_width, 800);
+    assert_eq!(wc.default_height, 600);
+    assert_eq!(wc.min_width, 360);
+    assert_eq!(wc.min_height, 240);
+    assert!(wc.resizable);
+}
+
+#[test]
+fn test_window_config_serde() {
+    let wc = WindowConfig {
+        default_width: 1024,
+        default_height: 768,
+        min_width: 400,
+        min_height: 300,
+        resizable: false,
+    };
+    let json = serde_json::to_string(&wc).unwrap();
+    let back: WindowConfig = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.default_width, 1024);
+    assert!(!back.resizable);
+}
+
+// ── EventTarget Session/System tests ────────────────────────────
+
+#[test]
+fn test_event_target_session() {
+    let p = EventEmitPayload {
+        event: "theme:changed".to_string(),
+        payload: json!({"theme": "nord"}),
+        target: EventTarget::Session {
+            session_id: "sess-123".to_string(),
+        },
+    };
+    let json_str = serde_json::to_string(&p).unwrap();
+    let back: EventEmitPayload = serde_json::from_str(&json_str).unwrap();
+    assert_eq!(back.event, "theme:changed");
+    match back.target {
+        EventTarget::Session { session_id } => assert_eq!(session_id, "sess-123"),
+        _ => panic!("Expected Session target"),
+    }
+}
+
+#[test]
+fn test_event_target_system() {
+    let p = EventEmitPayload {
+        event: "__system:shutdown_imminent".to_string(),
+        payload: json!(null),
+        target: EventTarget::System,
+    };
+    let json_str = serde_json::to_string(&p).unwrap();
+    assert!(json_str.contains("\"system\""));
+    let back: EventEmitPayload = serde_json::from_str(&json_str).unwrap();
+    assert!(matches!(back.target, EventTarget::System));
+}
+
+// ── Enriched manifest tests ─────────────────────────────────────
+
+#[test]
+fn test_manifest_toml_with_new_fields() {
+    let toml_str = r#"
+[app]
+slug = "files"
+name = "Files"
+version = "1.0.0"
+description = "File manager"
+icon = "📁"
+category = "system"
+keywords = ["file", "folder", "explorer"]
+mime_types = ["inode/directory"]
+single_instance = false
+
+[window]
+default_width = 900
+default_height = 600
+min_width = 400
+min_height = 300
+resizable = true
+
+[backend]
+executable = "zro-app-files"
+
+[frontend]
+directory = "frontend"
+"#;
+    let manifest: AppManifest = toml::from_str(toml_str).unwrap();
+    assert_eq!(manifest.app.icon, "📁");
+    assert_eq!(manifest.app.category, AppCategory::System);
+    assert_eq!(manifest.app.keywords, vec!["file", "folder", "explorer"]);
+    assert_eq!(manifest.app.mime_types, vec!["inode/directory"]);
+    assert!(!manifest.app.single_instance);
+    assert_eq!(manifest.window.default_width, 900);
+    assert_eq!(manifest.window.min_height, 300);
+    assert!(manifest.validate().is_ok());
+}
+
+#[test]
+fn test_manifest_toml_backward_compat_minimal() {
+    // Old minimal manifest without any new fields
+    let toml_str = r#"
+[app]
+slug = "test"
+name = "Test"
+version = "0.1.0"
+
+[backend]
+executable = "test-backend"
+
+[frontend]
+directory = "frontend"
+"#;
+    let manifest: AppManifest = toml::from_str(toml_str).unwrap();
+    assert_eq!(manifest.app.icon, "");
+    assert_eq!(manifest.app.category, AppCategory::Other);
+    assert!(manifest.app.keywords.is_empty());
+    assert!(manifest.app.mime_types.is_empty());
+    assert!(!manifest.app.single_instance);
+    assert_eq!(manifest.window.default_width, 800);
+    assert_eq!(manifest.window.default_height, 600);
+    assert!(manifest.window.resizable);
+    assert!(manifest.validate().is_ok());
 }
 
 // ── Error display tests ─────────────────────────────────────────

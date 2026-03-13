@@ -31,6 +31,8 @@ fn test_state(users: Vec<auth::UserEntry>, manifests: Vec<AppManifest>) -> gatew
         development: config::DevelopmentConfig::default(),
         production: config::ProductionConfig::default(),
         storage: config::StorageConfig::default(),
+        control: config::ControlConfig::default(),
+        desktop: config::DesktopConfig::default(),
         runtime_mode: config::RuntimeMode::Development,
     };
 
@@ -68,19 +70,25 @@ fn test_manifest(_id: &str, slug: &str, name: &str) -> AppManifest {
             name: name.to_string(),
             version: "0.1.0".to_string(),
             description: format!("{} app", name),
+            icon: String::new(),
+            category: AppCategory::default(),
+            keywords: vec![],
+            mime_types: vec![],
+            single_instance: false,
         },
-        backend: BackendInfo {
+        backend: Some(BackendInfo {
             executable: format!("zro-app-{}", slug),
             transport: "unix_socket".to_string(),
             command: None,
             args: vec![],
-        },
+        }),
         frontend: FrontendInfo {
             directory: "frontend".to_string(),
             index: "index.html".to_string(),
             dev: None,
         },
         permissions: PermissionsInfo::default(),
+        window: WindowConfig::default(),
     }
 }
 

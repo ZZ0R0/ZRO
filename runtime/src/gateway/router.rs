@@ -1,6 +1,6 @@
 use axum::{
     middleware,
-    routing::{any, get, post},
+    routing::{any, delete, get, post, put},
     Router,
     response::Redirect,
 };
@@ -35,6 +35,26 @@ pub fn build_router(state: AppState) -> Router {
         }))
         // App list (JSON API for Shell to enumerate apps)
         .route("/api/apps", get(handlers::apps::app_list_json))
+        // Dynamic app management (admin only)
+        .route("/api/apps/register", post(handlers::apps::register_app_handler))
+        .route("/api/apps/{slug}/unregister", post(handlers::apps::unregister_app_handler))
+        // App metadata & MIME routing
+        .route("/api/apps/metadata", get(handlers::apps::app_metadata))
+        .route("/api/apps/for-mime/{type}/{subtype}", get(handlers::apps::apps_for_mime))
+        // Desktop environment APIs
+        .route("/api/desktop/preferences", get(handlers::desktop::get_preferences))
+        .route("/api/desktop/preferences/{key}", put(handlers::desktop::set_preference))
+        .route("/api/desktop/themes", get(handlers::desktop::list_themes))
+        .route("/api/desktop/wallpapers", get(handlers::desktop::list_wallpapers))
+        // Notification APIs
+        .route("/api/notifications", get(handlers::notifications::list_notifications))
+        .route("/api/notifications/read-all", post(handlers::notifications::mark_all_read))
+        .route("/api/notifications/{id}/read", post(handlers::notifications::mark_read))
+        .route("/api/notifications/{id}", delete(handlers::notifications::delete_notification))
+        // System info
+        .route("/api/system/info", get(handlers::system::system_info))
+        // Auth verify (for lock screen)
+        .route("/api/auth/verify", post(handlers::auth::verify_password))
         // Legacy app list page (fallback when no Shell)
         .route("/apps", get(handlers::apps::app_list))
         // Multiplexed WebSocket (v2)

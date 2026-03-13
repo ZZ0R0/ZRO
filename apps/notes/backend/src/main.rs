@@ -8,6 +8,11 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use zro_sdk::app::ZroApp;
+use zro_sdk::modules::dev::{DevModule, LogLevel};
+use zro_sdk::modules::ipc::IpcModule;
+use zro_sdk::modules::lifecycle::LifecycleModule;
+use zro_sdk::modules::notifications::NotificationsModule;
+use zro_sdk::modules::state::StateModule;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Note {
@@ -75,6 +80,11 @@ async fn main() -> anyhow::Result<()> {
     let db: NotesDb = Arc::new(RwLock::new(initial_notes));
 
     let app = ZroApp::builder()
+        .module(StateModule::new())
+        .module(IpcModule::new())
+        .module(NotificationsModule::new())
+        .module(DevModule::new().level(LogLevel::Info))
+        .module(LifecycleModule::new())
         // ── list_notes ──────────────────────────────────────────────
         .command("list_notes", {
             let db = db.clone();

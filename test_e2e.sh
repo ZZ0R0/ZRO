@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────
 set -e
 
-BASE="http://localhost:8080"
+BASE="http://localhost:8090"
 COOKIE_JAR="/tmp/zro_e2e_cookies.txt"
 PASS=0
 FAIL=0
@@ -57,55 +57,55 @@ check "Login returns username" '"username":"dev"' "$R"
 check "Login returns role" '"role":"admin"' "$R"
 
 # ── 3. Auth protection ──────────────────────────────────────
-R=$(curl -s --max-time 5 -o /dev/null -w "%{http_code}" "$BASE/a/echo/api/status" 2>&1)
+R=$(curl -s --max-time 5 -o /dev/null -w "%{http_code}" "$BASE/echo/api/status" 2>&1)
 check "Unauthenticated API returns 401" "401" "$R"
 
 # ── 4. Echo app HTTP ────────────────────────────────────────
 echo ""
 echo "Echo App — HTTP API"
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/a/echo/api/status" 2>&1)
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/echo/api/status" 2>&1)
 check "GET /api/status returns ok" '"ok":true' "$R"
 check "GET /api/status shows slug" '"slug":"echo"' "$R"
 check "GET /api/status shows session user" '"username":"dev"' "$R"
 
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X POST "$BASE/a/echo/api/echo" -H "Content-Type: application/json" -d '{"test":42}' 2>&1)
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X POST "$BASE/echo/api/echo" -H "Content-Type: application/json" -d '{"test":42}' 2>&1)
 check "POST /api/echo returns ok" '"ok":true' "$R"
 check "POST /api/echo echoes body" 'test.*42' "$R"
 
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X PUT "$BASE/a/echo/api/kv" -H "Content-Type: application/json" -d '{"key":"e2e","value":"success"}' 2>&1)
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X PUT "$BASE/echo/api/kv" -H "Content-Type: application/json" -d '{"key":"e2e","value":"success"}' 2>&1)
 check "PUT /api/kv sets key" '"ok":true' "$R"
 
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/a/echo/api/kv" 2>&1)
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/echo/api/kv" 2>&1)
 check "GET /api/kv reads back key" '"e2e":"success"' "$R"
 
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X DELETE "$BASE/a/echo/api/kv" -H "Content-Type: application/json" -d '{"key":"e2e"}' 2>&1)
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X DELETE "$BASE/echo/api/kv" -H "Content-Type: application/json" -d '{"key":"e2e"}' 2>&1)
 check "DELETE /api/kv removes key" '"removed":true' "$R"
 
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/a/echo/api/log" 2>&1)
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/echo/api/log" 2>&1)
 check "GET /api/log returns entries" '"entries"' "$R"
 
 # ── 5. Notes app ────────────────────────────────────────────
 echo ""
 echo "Notes App"
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X POST "$BASE/a/notes/api/notes" -H "Content-Type: application/json" -d '{"title":"E2E Test","content":"Created by e2e test script"}' 2>&1)
-check "POST /api/notes creates note" '"title":"E2E Test"' "$R"
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" -X POST "$BASE/notes/api/note" -H "Content-Type: application/json" -d '{"title":"E2E Test","content":"Created by e2e test script"}' 2>&1)
+check "POST /api/note creates note" '"title":"E2E Test"' "$R"
 NOTE_ID=$(echo "$R" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null || echo "")
 
-R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/a/notes/api/notes" 2>&1)
+R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/notes/api/notes" 2>&1)
 check "GET /api/notes lists notes" '"notes"' "$R"
 
 if [ -n "$NOTE_ID" ]; then
-    R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/a/notes/api/notes/$NOTE_ID" 2>&1)
-    check "GET /api/notes/:id returns note" '"E2E Test"' "$R"
+    R=$(curl -s --max-time 10 -b "$COOKIE_JAR" "$BASE/notes/api/note/$NOTE_ID" 2>&1)
+    check "GET /api/note/:id returns note" '"E2E Test"' "$R"
 fi
 
 # ── 6. Frontend serving ─────────────────────────────────────
 echo ""
 echo "Frontend Serving"
-R=$(curl -s --max-time 5 -b "$COOKIE_JAR" -o /dev/null -w "%{http_code}" "$BASE/a/echo/" 2>&1)
-check "GET /a/echo/ serves index.html" "200" "$R"
+R=$(curl -s --max-time 5 -b "$COOKIE_JAR" -o /dev/null -w "%{http_code}" "$BASE/echo/" 2>&1)
+check "GET /echo/ serves index.html" "200" "$R"
 
-R=$(curl -s --max-time 5 -b "$COOKIE_JAR" "$BASE/a/echo/" 2>&1)
+R=$(curl -s --max-time 5 -b "$COOKIE_JAR" "$BASE/echo/" 2>&1)
 check "Echo frontend contains test UI" 'Echo Test' "$R"
 
 R=$(curl -s --max-time 5 -o /dev/null -w "%{http_code}" "$BASE/auth/login" 2>&1)

@@ -1,0 +1,21 @@
+[app]
+slug = "screenshot"
+name = "Screenshot"
+version = "0.1.0"
+description = "Screen capture tool"
+icon = "📸"
+category = "tools"
+keywords = ["screenshot", "capture", "screen", "print"]
+
+[window]
+default_width = 500
+default_height = 400
+min_width = 400
+min_height = 300
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]

@@ -149,6 +149,7 @@ fn test_session_info_construction() {
         username: "admin".to_string(),
         role: "admin".to_string(),
         groups: vec!["dev".to_string()],
+        profile: None,
     };
     assert_eq!(session.username, "admin");
     assert_eq!(session.role, "admin");
@@ -163,6 +164,7 @@ fn test_session_info_clone() {
         username: "admin".to_string(),
         role: "admin".to_string(),
         groups: vec![],
+        profile: None,
     };
     let cloned = session.clone();
     assert_eq!(cloned.user_id, session.user_id);
@@ -177,6 +179,7 @@ fn test_session_info_serde_roundtrip() {
         username: "bob".to_string(),
         role: "user".to_string(),
         groups: vec!["team-a".to_string()],
+        profile: None,
     };
     let json = serde_json::to_value(&session).unwrap();
     assert_eq!(json["username"], "bob");

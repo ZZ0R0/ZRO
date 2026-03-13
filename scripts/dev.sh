@@ -6,7 +6,13 @@ echo "=== Starting zro runtime (development) ==="
 # Ensure data dirs exist
 mkdir -p data /tmp/zro-ipc
 
-# Build first
+# Build frontend SDK first
+if [ -f sdks/frontend/package.json ]; then
+    echo "--- Building Frontend SDK ---"
+    (cd sdks/frontend && npm install --silent && npm run build)
+fi
+
+# Build Rust
 cargo build --workspace
 
 # Export env for dev

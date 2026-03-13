@@ -13,6 +13,9 @@
     const previewPanel = document.getElementById('preview-panel');
     const previewFilename = document.getElementById('preview-filename');
     const previewContent = document.getElementById('preview-content');
+    const pathInput = document.getElementById('path-input');
+    const btnBack = document.getElementById('btn-back');
+    const btnGo = document.getElementById('btn-go');
     const btnClosePreview = document.getElementById('btn-close-preview');
     const ctxMenu = document.getElementById('ctx-menu');
 
@@ -29,6 +32,7 @@
         currentPath = path || '/';
         selectedEntry = null;
         closePreview();
+        if (pathInput) pathInput.value = currentPath;
         try {
             const data = await conn.invoke('ls', { path: currentPath });
             entries = data.entries || [];
@@ -108,21 +112,44 @@
     }
 
     // --- Preview ---
+    const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico'];
+
+    function getExt(name) {
+        return (name.split('.').pop() || '').toLowerCase();
+    }
+
+    function isImageFile(name) {
+        return IMAGE_EXTS.includes(getExt(name));
+    }
+
+    function mimeFromExt(name) {
+        const ext = getExt(name);
+        const map = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif',
+                      svg:'image/svg+xml', webp:'image/webp', bmp:'image/bmp', ico:'image/x-icon' };
+        return map[ext] || 'application/octet-stream';
+    }
+
     async function openPreview(filename) {
         const filePath = currentPath === '/' ? '/' + filename : currentPath + '/' + filename;
         previewFilename.textContent = filename;
-        previewContent.textContent = 'Loading…';
+        previewContent.innerHTML = '<span>Loading…</span>';
         previewPanel.classList.remove('hidden');
         try {
             const data = await conn.invoke('read_file', { path: filePath });
-            if (data.binary) {
-                previewContent.textContent = `[Binary file — ${formatSize(data.size)}]`;
+            if (data.binary && data.base64 && isImageFile(filename)) {
+                const mime = mimeFromExt(filename);
+                previewContent.innerHTML = '<img src="data:' + mime + ';base64,' + data.base64 + '" style="max-width:100%;max-height:80vh;object-fit:contain;" />';
+            } else if (data.binary && data.base64) {
+                previewContent.innerHTML = '<span>[Binary file — ' + formatSize(data.size) + ']</span>';
             } else if (data.error) {
+                previewContent.innerHTML = '';
                 previewContent.textContent = data.error;
             } else {
+                previewContent.innerHTML = '';
                 previewContent.textContent = data.content;
             }
         } catch (e) {
+            previewContent.innerHTML = '';
             previewContent.textContent = 'Error: ' + (e.message || e);
         }
     }
@@ -176,6 +203,8 @@
                 } else {
                     openPreview(ctxTarget.name);
                 }
+            } else if (action === 'download' && ctxTarget && ctxTarget.type === 'file') {
+                downloadFile(ctxTarget.name);
             } else if (action === 'delete' && ctxTarget) {
                 if (!confirm('Delete "' + ctxTarget.name + '"?')) return;
                 const targetPath = currentPath === '/' ? '/' + ctxTarget.name : currentPath + '/' + ctxTarget.name;
@@ -209,6 +238,34 @@
         });
     });
 
+    // --- Download ---
+    async function downloadFile(filename) {
+        const filePath = currentPath === '/' ? '/' + filename : currentPath + '/' + filename;
+        try {
+            const data = await conn.invoke('read_file', { path: filePath });
+            let blob;
+            if (data.binary && data.base64) {
+                const raw = atob(data.base64);
+                const arr = new Uint8Array(raw.length);
+                for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+                blob = new Blob([arr], { type: mimeFromExt(filename) });
+            } else if (data.content !== undefined) {
+                blob = new Blob([data.content], { type: 'text/plain;charset=utf-8' });
+            } else {
+                alert('Cannot download this file');
+                return;
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            alert('Download failed: ' + (e.message || e));
+        }
+    }
+
     // --- Helpers ---
     function fileIcon(name) {
         const ext = (name.split('.').pop() || '').toLowerCase();
@@ -240,6 +297,26 @@
     function escapeAttr(str) {
         return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
+
+    // --- Toolbar handlers ---
+    btnBack.addEventListener('click', () => {
+        if (currentPath === '/') return;
+        const parts = currentPath.split('/').filter(Boolean);
+        parts.pop();
+        navigate(parts.length ? '/' + parts.join('/') : '/');
+    });
+
+    btnGo.addEventListener('click', () => {
+        const val = pathInput.value.trim();
+        if (val) navigate(val);
+    });
+
+    pathInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const val = pathInput.value.trim();
+            if (val) navigate(val);
+        }
+    });
 
     // --- Init (navigate will be called by onConnect) ---
 })();

@@ -71,6 +71,10 @@ pub struct RuntimeConfig {
     pub production: ProductionConfig,
     #[serde(default)]
     pub storage: StorageConfig,
+    #[serde(default)]
+    pub control: ControlConfig,
+    #[serde(default)]
+    pub desktop: DesktopConfig,
     /// Resolved runtime mode (set after loading).
     #[serde(skip)]
     pub runtime_mode: RuntimeMode,
@@ -304,8 +308,10 @@ pub struct SupervisorConfig {
     #[allow(dead_code)]
     pub health_check_interval_seconds: u64,
     #[serde(default = "default_max_restart")]
-    #[allow(dead_code)]
     pub max_restart_attempts: u32,
+    /// Base delay in seconds between restart attempts (doubles each attempt).
+    #[serde(default = "default_restart_delay")]
+    pub restart_delay_seconds: u64,
 }
 
 impl Default for SupervisorConfig {
@@ -314,6 +320,7 @@ impl Default for SupervisorConfig {
             shutdown_timeout_seconds: default_shutdown_timeout(),
             health_check_interval_seconds: default_health_interval(),
             max_restart_attempts: default_max_restart(),
+            restart_delay_seconds: default_restart_delay(),
         }
     }
 }
@@ -395,6 +402,95 @@ fn default_db_path() -> String { "./data/zro.db".to_string() }
 fn default_pool_size() -> u32 { 10 }
 fn default_cleanup_interval() -> u64 { 3600 }
 
+// ── Control socket config ───────────────────────────────────────
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ControlConfig {
+    /// Path for the control Unix socket.
+    #[serde(default = "default_control_socket")]
+    pub socket_path: String,
+    /// Directory for IPC sockets (backend ↔ runtime).
+    #[serde(default = "default_ipc_dir")]
+    pub ipc_dir: String,
+}
+
+impl Default for ControlConfig {
+    fn default() -> Self {
+        Self {
+            socket_path: default_control_socket(),
+            ipc_dir: default_ipc_dir(),
+        }
+    }
+}
+
+fn default_control_socket() -> String { "/run/zro/control.sock".to_string() }
+fn default_ipc_dir() -> String { zro_protocol::constants::IPC_SOCKET_DIR.to_string() }
+
+// ── Desktop config ──────────────────────────────────────────────
+
+/// Desktop environment configuration.
+#[derive(Clone, Debug, Deserialize)]
+pub struct DesktopConfig {
+    /// Default theme for new users.
+    #[serde(default = "default_theme")]
+    pub default_theme: String,
+    /// Default wallpaper path (relative to static/).
+    #[serde(default)]
+    pub default_wallpaper: Option<String>,
+    /// Directory containing wallpaper images.
+    #[serde(default = "default_wallpapers_dir")]
+    pub wallpapers_dir: String,
+    /// Lock screen timeout in minutes (0 = disabled).
+    #[serde(default = "default_lock_timeout")]
+    pub lock_timeout_minutes: u32,
+    /// Maximum avatar file size in bytes (default 2 MiB).
+    #[serde(default = "default_max_avatar_size")]
+    pub max_avatar_size: usize,
+    /// Maximum wallpaper file size in bytes (default 10 MiB).
+    #[serde(default = "default_max_wallpaper_size")]
+    pub max_wallpaper_size: usize,
+    /// Default shell app slug for the desktop environment.
+    #[serde(default = "default_shell_app")]
+    pub shell_app: String,
+    /// Unique workspace identifier (auto-generated if not set).
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
+    /// MIME type → app slug overrides (e.g. "text/plain" → "notes").
+    #[serde(default)]
+    pub mime_associations: std::collections::HashMap<String, String>,
+}
+
+impl Default for DesktopConfig {
+    fn default() -> Self {
+        Self {
+            default_theme: default_theme(),
+            default_wallpaper: None,
+            wallpapers_dir: default_wallpapers_dir(),
+            lock_timeout_minutes: default_lock_timeout(),
+            max_avatar_size: default_max_avatar_size(),
+            max_wallpaper_size: default_max_wallpaper_size(),
+            shell_app: default_shell_app(),
+            workspace_id: default_workspace_id(),
+            mime_associations: std::collections::HashMap::new(),
+        }
+    }
+}
+
+fn default_theme() -> String { "catppuccin-mocha".to_string() }
+fn default_wallpapers_dir() -> String { "./static/wallpapers".to_string() }
+fn default_lock_timeout() -> u32 { 15 }
+fn default_max_avatar_size() -> usize { 2 * 1024 * 1024 }
+fn default_max_wallpaper_size() -> usize { 10 * 1024 * 1024 }
+fn default_shell_app() -> String { "custom-shell".to_string() }
+fn default_workspace_id() -> String {
+    // Deterministic ID based on the executable path — stable across restarts
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut h = DefaultHasher::new();
+    std::env::current_dir().unwrap_or_default().hash(&mut h);
+    format!("zro-{:016x}", h.finish())
+}
+
 // Default value functions
 fn default_host() -> String { "0.0.0.0".to_string() }
 fn default_port() -> u16 { 8080 }
@@ -416,6 +512,7 @@ fn default_log_format() -> String { "pretty".to_string() }
 fn default_shutdown_timeout() -> u64 { 10 }
 fn default_health_interval() -> u64 { 5 }
 fn default_max_restart() -> u32 { 3 }
+fn default_restart_delay() -> u64 { 2 }
 
 impl RuntimeConfig {
     /// Load configuration from file. Falls back to defaults if file doesn't exist.
@@ -440,6 +537,8 @@ impl RuntimeConfig {
                 development: DevelopmentConfig::default(),
                 production: ProductionConfig::default(),
                 storage: StorageConfig::default(),
+                control: ControlConfig::default(),
+                desktop: DesktopConfig::default(),
                 runtime_mode: RuntimeMode::default(),
             }
         };
@@ -501,6 +600,8 @@ mod tests {
             development: DevelopmentConfig::default(),
             production: ProductionConfig::default(),
             storage: StorageConfig::default(),
+            control: ControlConfig::default(),
+            desktop: DesktopConfig::default(),
             runtime_mode: RuntimeMode::default(),
         };
         assert_eq!(config.server.port, 8080);

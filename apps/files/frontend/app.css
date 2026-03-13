@@ -5,6 +5,39 @@
     overflow: hidden;
 }
 
+/* Toolbar */
+#toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--zro-space-xs);
+    padding: var(--zro-space-xs) var(--zro-space-md);
+    background: var(--zro-bg-secondary);
+    border-bottom: 1px solid var(--zro-bg-surface);
+}
+
+#toolbar button {
+    background: var(--zro-bg-surface);
+    border: 1px solid var(--zro-bg-surface);
+    color: var(--zro-text-primary);
+    border-radius: var(--zro-radius-sm);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: var(--zro-font-size-md);
+}
+
+#toolbar button:hover { background: var(--zro-accent); color: var(--zro-bg-primary); }
+
+#path-input {
+    flex: 1;
+    background: var(--zro-bg-primary);
+    border: 1px solid var(--zro-bg-surface);
+    color: var(--zro-text-primary);
+    border-radius: var(--zro-radius-sm);
+    padding: 4px 8px;
+    font-family: var(--zro-font-mono);
+    font-size: var(--zro-font-size-sm);
+}
+
 /* Breadcrumb */
 #breadcrumb {
     display: flex;

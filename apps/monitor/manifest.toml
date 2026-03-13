@@ -1,0 +1,28 @@
+[app]
+slug = "monitor"
+name = "System Monitor"
+version = "0.1.0"
+description = "System resource monitor and process manager"
+icon = "📊"
+category = "system"
+keywords = ["monitor", "cpu", "ram", "process", "system", "htop"]
+
+[window]
+default_width = 900
+default_height = 650
+min_width = 600
+min_height = 400
+
+[backend]
+executable = "zro-app-monitor"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin"]
+
+[permissions.capabilities]
+process_spawn = true

@@ -3,17 +3,20 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Custom Shell</title>
-    <link rel="stylesheet" href="/custom-shell/static/style.css">
+    <title>ZRO Desktop</title>
+    <link rel="stylesheet" href="/custom-shell/static/style.css?v=1773378881">
 </head>
 <body>
 
-    <!-- ── Desktop: windows live here ────────────────────── -->
+    <!-- ── Desktop surface ───────────────────────────────── -->
     <div id="desktop"></div>
+
+    <!-- ── Snap preview overlay ──────────────────────────── -->
+    <div id="snap-preview" class="hidden"></div>
 
     <!-- ── Taskbar ───────────────────────────────────────── -->
     <div id="taskbar">
-        <button id="launcher-btn" class="taskbar-btn" title="Applications">
+        <button id="launcher-btn" class="taskbar-btn taskbar-launcher" title="Applications (Super)">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
                 <rect x="1" y="1" width="7" height="7" rx="1.5"/>
                 <rect x="10" y="1" width="7" height="7" rx="1.5"/>
@@ -23,29 +26,139 @@
         </button>
         <div id="taskbar-windows"></div>
         <div class="taskbar-spacer"></div>
-        <div id="taskbar-clock"></div>
+        <!-- System tray -->
+        <div id="system-tray">
+            <button id="tray-cpu" class="tray-indicator" title="System">
+                <span class="tray-icon">💻</span>
+                <span class="tray-value" id="tray-cpu-val">–</span>
+            </button>
+            <button id="tray-notif" class="tray-indicator" title="Notifications">
+                <span class="tray-icon">🔔</span>
+                <span class="tray-badge hidden" id="tray-notif-badge">0</span>
+            </button>
+            <button id="tray-user" class="tray-indicator" title="User">
+                <span class="tray-icon">👤</span>
+                <span class="tray-value" id="tray-user-name">user</span>
+            </button>
+        </div>
+        <div id="taskbar-clock" title="Click for calendar">
+            <span id="clock-time"></span>
+            <span id="clock-date"></span>
+        </div>
     </div>
 
     <!-- ── Launcher overlay ──────────────────────────────── -->
     <div id="launcher" class="hidden">
         <div class="launcher-backdrop"></div>
         <div class="launcher-panel">
-            <h2>Applications</h2>
+            <input type="text" id="launcher-search" placeholder="Search applications..." autocomplete="off" spellcheck="false">
+            <div id="launcher-categories">
+                <button class="cat-btn active" data-cat="all">All</button>
+                <button class="cat-btn" data-cat="system">System</button>
+                <button class="cat-btn" data-cat="tools">Tools</button>
+                <button class="cat-btn" data-cat="internet">Internet</button>
+                <button class="cat-btn" data-cat="multimedia">Multimedia</button>
+                <button class="cat-btn" data-cat="productivity">Productivity</button>
+            </div>
             <div id="launcher-grid"></div>
+            <div id="launcher-actions">
+                <button id="launcher-lock" class="launcher-action-btn" title="Lock session">🔒 Lock</button>
+                <button id="launcher-logout" class="launcher-action-btn" title="Log out">🚪 Log out</button>
+                <button id="launcher-settings" class="launcher-action-btn" title="Settings">⚙️ Settings</button>
+            </div>
         </div>
     </div>
 
-    <!-- ── Notification stack ────────────────────────────── -->
+    <!-- ── Alt+Tab Switcher overlay ──────────────────────── -->
+    <div id="switcher" class="hidden">
+        <div class="switcher-panel" id="switcher-panel"></div>
+    </div>
+
+    <!-- ── Quick Settings panel ──────────────────────────── -->
+    <div id="quick-settings" class="hidden">
+        <div class="qs-header">
+            <span id="qs-username">user</span>
+            <span id="qs-role" class="qs-role-badge">admin</span>
+        </div>
+        <div class="qs-toggles">
+            <button id="qs-theme-toggle" class="qs-toggle" title="Toggle dark/light">🌙 Dark</button>
+            <button id="qs-dnd-toggle" class="qs-toggle" title="Do not disturb">🔔 DND Off</button>
+        </div>
+        <div class="qs-metrics">
+            <div class="qs-metric"><span>CPU</span><span id="qs-cpu">–%</span></div>
+            <div class="qs-metric"><span>RAM</span><span id="qs-ram">–%</span></div>
+            <div class="qs-metric"><span>Disk</span><span id="qs-disk">–%</span></div>
+            <div class="qs-metric"><span>Uptime</span><span id="qs-uptime">–</span></div>
+        </div>
+        <div class="qs-actions">
+            <button id="qs-settings">⚙️ Settings</button>
+            <button id="qs-lock">🔒 Lock</button>
+            <button id="qs-logout">🚪 Log out</button>
+        </div>
+    </div>
+
+    <!-- ── Notification center panel ─────────────────────── -->
+    <div id="notif-center" class="hidden">
+        <div class="nc-header">
+            <span>Notifications</span>
+            <button id="nc-clear-all" title="Clear all">Clear</button>
+        </div>
+        <div id="nc-list"></div>
+        <div id="nc-empty" class="nc-empty">No notifications</div>
+    </div>
+
+    <!-- ── Notification toast stack ──────────────────────── -->
     <div id="notifications"></div>
 
-    <!-- ── Scripts ────────────────────────────────────────── -->
-    <!-- Shared ZRO client SDK (WebSocket, invoke, state, etc.) -->
-    <script src="/static/zro-client.js"></script>
+    <!-- ── Lock screen overlay ───────────────────────────── -->
+    <div id="lock-screen" class="hidden">
+        <div class="lock-bg"></div>
+        <div class="lock-content">
+            <div id="lock-clock" class="lock-clock"></div>
+            <div id="lock-date" class="lock-date"></div>
+            <div class="lock-user">
+                <div class="lock-avatar">👤</div>
+                <div id="lock-username" class="lock-username">user</div>
+            </div>
+            <form id="lock-form" class="lock-form">
+                <input type="password" id="lock-password" placeholder="Enter password..." autocomplete="off">
+                <button type="submit" class="lock-submit">Unlock</button>
+            </form>
+            <div id="lock-error" class="lock-error hidden"></div>
+        </div>
+    </div>
 
-    <!-- Your shell modules — edit these freely -->
-    <script src="/custom-shell/static/window-manager.js"></script>
-    <script src="/custom-shell/static/taskbar.js"></script>
-    <script src="/custom-shell/static/launcher.js"></script>
-    <script src="/custom-shell/static/desktop.js"></script>
+    <!-- ── Desktop context menu ──────────────────────────── -->
+    <div id="desktop-ctx-menu" class="ctx-menu hidden">
+        <div class="ctx-item" data-action="wallpaper">🖼 Change Wallpaper</div>
+        <div class="ctx-item" data-action="terminal">💻 Open Terminal</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" data-action="settings">⚙️ Settings</div>
+        <div class="ctx-item" data-action="refresh">🔄 Refresh Desktop</div>
+    </div>
+
+    <!-- ── Wallpaper picker dialog ───────────────────────── -->
+    <div id="wallpaper-picker" class="hidden">
+        <div class="wp-backdrop"></div>
+        <div class="wp-panel">
+            <div class="wp-header">
+                <h3>Choose Wallpaper</h3>
+                <button id="wp-close" class="wp-close-btn">✕</button>
+            </div>
+            <div id="wp-grid" class="wp-grid"></div>
+            <div class="wp-options">
+                <button id="wp-solid-color" class="wp-option-btn">Solid Color</button>
+                <input type="color" id="wp-color-picker" value="#1e1e2e" class="wp-color-input">
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Scripts ────────────────────────────────────────── -->
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/custom-shell/static/window-manager.js?v=1773378881"></script>
+    <script src="/custom-shell/static/taskbar.js?v=1773378881"></script>
+    <script src="/custom-shell/static/launcher.js?v=1773378881"></script>
+    <script src="/custom-shell/static/keybindings.js?v=1773378881"></script>
+    <script src="/custom-shell/static/desktop.js?v=1773378881"></script>
 </body>
 </html>

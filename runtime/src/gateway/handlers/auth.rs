@@ -257,6 +257,39 @@ pub async fn me(
     }
 }
 
+/// POST /api/auth/verify — Verify password for lock screen unlock.
+/// Body: { "password": "..." }
+pub async fn verify_password(
+    State(state): State<AppState>,
+    session: Option<axum::Extension<Session>>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    let session = match session {
+        Some(axum::Extension(s)) => s,
+        None => return (StatusCode::UNAUTHORIZED, Json(json!({"ok": false, "error": "not_authenticated"}))).into_response(),
+    };
+
+    let password = match body.get("password").and_then(|v| v.as_str()) {
+        Some(p) => p.to_string(),
+        None => return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "password required"}))).into_response(),
+    };
+
+    // Throttle: re-use the rate limiter
+    if state.rate_limiter.is_limited(&session.username).await {
+        return (StatusCode::TOO_MANY_REQUESTS, Json(json!({"ok": false, "error": "too_many_attempts"}))).into_response();
+    }
+
+    match state.auth_pipeline.authenticate(&session.username, &password).await {
+        Some(_auth_result) => {
+            Json(json!({"ok": true, "verified": true})).into_response()
+        }
+        None => {
+            state.rate_limiter.record_attempt(&session.username).await;
+            (StatusCode::FORBIDDEN, Json(json!({"ok": false, "verified": false, "error": "invalid_password"}))).into_response()
+        }
+    }
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 fn extract_ip(headers: &HeaderMap) -> String {

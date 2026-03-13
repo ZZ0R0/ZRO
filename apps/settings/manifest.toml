@@ -1,0 +1,25 @@
+[app]
+slug = "settings"
+name = "Settings"
+version = "0.1.0"
+description = "System settings and preferences"
+icon = "⚙️"
+category = "system"
+keywords = ["settings", "preferences", "theme", "wallpaper", "config"]
+
+[window]
+default_width = 900
+default_height = 650
+min_width = 600
+min_height = 400
+
+[backend]
+executable = "zro-app-settings"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]

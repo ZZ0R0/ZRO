@@ -1,6 +1,9 @@
 /// Maximum message size: 16 MiB.
 pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
 
+/// Maximum uploaded file size: 10 MiB (wallpapers, avatars, etc.).
+pub const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024;
+
 /// Current IPC protocol version.
 pub const PROTOCOL_VERSION: u32 = 1;
 

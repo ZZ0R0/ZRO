@@ -5,6 +5,15 @@ export interface SessionInfo {
     username: string;
     role: string;
     groups: string[];
+    profile?: UserProfile;
+}
+
+/** User profile with display information. */
+export interface UserProfile {
+    display_name?: string;
+    avatar_url?: string;
+    email?: string;
+    locale?: string;
 }
 
 /** IPC message envelope. */
@@ -18,7 +27,9 @@ export interface IpcMessageData {
 /** Event target types. */
 export type EventTarget =
     | { type: 'instance'; instance_id: string }
-    | { type: 'broadcast' };
+    | { type: 'broadcast' }
+    | { type: 'session'; session_id: string }
+    | { type: 'system' };
 
 /** Command handler function type. */
 export type CommandHandler<T = any> = (

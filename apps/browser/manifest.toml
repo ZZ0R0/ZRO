@@ -1,0 +1,25 @@
+[app]
+slug = "browser"
+name = "Web Browser"
+version = "0.1.0"
+description = "Integrated web browser"
+icon = "🌐"
+category = "internet"
+keywords = ["browser", "web", "internet", "url", "http"]
+
+[window]
+default_width = 1024
+default_height = 700
+min_width = 500
+min_height = 400
+
+[backend]
+executable = "zro-app-browser"
+transport = "unix_socket"
+
+[frontend]
+directory = "frontend"
+index = "index.html"
+
+[permissions]
+roles = ["admin", "user"]

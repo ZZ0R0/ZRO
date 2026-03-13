@@ -3,6 +3,16 @@ slug = "notes"
 name = "Notes"
 version = "0.1.0"
 description = "A simple note editor"
+icon = "📝"
+category = "productivity"
+keywords = ["note", "text", "editor", "write"]
+mime_types = ["text/plain", "text/markdown"]
+
+[window]
+default_width = 700
+default_height = 500
+min_width = 350
+min_height = 250
 
 [backend]
 executable = "zro-app-notes"

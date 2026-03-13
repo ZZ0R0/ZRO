@@ -1,10 +1,16 @@
 use std::path::{Path, PathBuf};
 
+use base64::Engine;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use zro_sdk::app::ZroApp;
 use zro_sdk::context::AppContext;
+use zro_sdk::modules::dev::{DevModule, LogLevel};
+use zro_sdk::modules::ipc::IpcModule;
+use zro_sdk::modules::lifecycle::LifecycleModule;
+use zro_sdk::modules::notifications::NotificationsModule;
+use zro_sdk::modules::state::StateModule;
 
 const MAX_READ_SIZE: u64 = 1024 * 1024;
 
@@ -45,6 +51,11 @@ async fn main() -> anyhow::Result<()> {
     tokio::fs::create_dir_all(&root_dir).await?;
 
     let app = ZroApp::builder()
+        .module(StateModule::new())
+        .module(IpcModule::new())
+        .module(NotificationsModule::new())
+        .module(DevModule::new().level(LogLevel::Info))
+        .module(LifecycleModule::new())
         // ── ls ──────────────────────────────────────────────────────
         .command("ls", {
             let root = root_dir.clone();
@@ -94,7 +105,8 @@ async fn main() -> anyhow::Result<()> {
                     }
                     let data = tokio::fs::read(&target).await.map_err(|e| e.to_string())?;
                     if is_binary(&data) {
-                        return Ok(serde_json::json!({ "path": p.path, "binary": true, "size": meta.len() }));
+                        let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+                        return Ok(serde_json::json!({ "path": p.path, "binary": true, "size": meta.len(), "base64": b64 }));
                     }
                     let content = String::from_utf8_lossy(&data).to_string();
                     Ok(serde_json::json!({ "path": p.path, "content": content, "size": meta.len() }))

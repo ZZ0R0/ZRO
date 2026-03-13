@@ -45,6 +45,7 @@ class IpcClient {
     buffer = Buffer.alloc(0);
     pending = [];
     closed = false;
+    _rejectPending = [];
     /** Connect to the runtime IPC socket. */
     connect(socketPath) {
         return new Promise((resolve, reject) => {
@@ -53,10 +54,11 @@ class IpcClient {
             this.socket.on('data', (chunk) => this.onData(chunk));
             this.socket.on('close', () => {
                 this.closed = true;
-                // Reject any pending reads
-                for (const cb of this.pending) {
-                    // will never resolve — caller should handle close
+                const err = new Error('Connection closed');
+                for (const rej of this._rejectPending) {
+                    rej(err);
                 }
+                this._rejectPending = [];
                 this.pending = [];
             });
         });
@@ -78,8 +80,9 @@ class IpcClient {
             return Promise.resolve(extracted);
         if (this.closed)
             return Promise.reject(new Error('Connection closed'));
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             this.pending.push(resolve);
+            this._rejectPending.push(reject);
         });
     }
     /** Close the connection. */
@@ -96,8 +99,8 @@ class IpcClient {
             if (!msg)
                 break;
             if (this.pending.length > 0) {
-                const resolve = this.pending.shift();
-                resolve(msg);
+                this.pending.shift()(msg);
+                this._rejectPending.shift();
             }
             // If no pending reader, message is dropped (shouldn't happen in normal flow)
         }

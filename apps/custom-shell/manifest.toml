@@ -3,6 +3,10 @@ slug = "custom-shell"
 name = "Custom Shell"
 version = "0.1.0"
 description = "Custom desktop shell — your own web desktop environment"
+icon = "🖥️"
+category = "system"
+keywords = ["shell", "desktop", "window", "manager"]
+single_instance = true
 
 [backend]
 executable = "zro-app-custom-shell"

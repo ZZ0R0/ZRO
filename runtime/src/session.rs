@@ -33,6 +33,7 @@ impl Session {
             username: self.username.clone(),
             role: self.role.clone(),
             groups: self.groups.clone(),
+            profile: None,
         }
     }
 }

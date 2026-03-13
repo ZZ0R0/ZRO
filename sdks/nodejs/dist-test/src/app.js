@@ -4,6 +4,7 @@ exports.ZroApp = void 0;
 const ipc_1 = require("./ipc");
 const protocol_1 = require("./protocol");
 const context_1 = require("./context");
+const module_1 = require("./module");
 /**
  * ZRO Application builder and runner (Node.js).
  *
@@ -29,6 +30,9 @@ class ZroApp {
     _wsEventHandlers = new Map();
     _lifecycleHandlers = new Map();
     _states = new Map();
+    _modules = [];
+    _initHooks = [];
+    _destroyHooks = [];
     _ipc = null;
     _slug = '';
     _dataDir = '/tmp';
@@ -50,6 +54,11 @@ class ZroApp {
     /** Register a shared state value. */
     registerState(key, initial) {
         this._states.set(key, initial);
+        return this;
+    }
+    /** Register a module. Modules are resolved in dependency order at startup. */
+    module(mod) {
+        this._modules.push(mod);
         return this;
     }
     /** Start the application (blocking). */
@@ -98,6 +107,36 @@ class ZroApp {
             process.exit(1);
         }
         console.error(`[ZRO SDK] App ${this._slug} connected`);
+        // ── Resolve and register modules ────────────────
+        if (this._modules.length > 0) {
+            const order = (0, module_1.resolveModuleOrder)(this._modules);
+            for (const idx of order) {
+                const mod = this._modules[idx];
+                const { name, version } = mod.meta;
+                console.error(`[ZRO SDK] Registering module: ${name} v${version}`);
+                const registrar = new module_1.ModuleRegistrar();
+                mod.register(registrar);
+                // Merge registrations into the app
+                for (const [k, v] of registrar._commands)
+                    this._commands.set(k, v);
+                for (const [k, v] of registrar._eventHandlers)
+                    this._wsEventHandlers.set(k, v);
+                for (const [k, v] of registrar._lifecycleHandlers)
+                    this._lifecycleHandlers.set(k, v);
+                this._initHooks.push(...registrar._initHooks);
+                this._destroyHooks.push(...registrar._destroyHooks);
+            }
+        }
+        // ── Run module init hooks ───────────────────────
+        if (this._initHooks.length > 0) {
+            const initCtx = {
+                slug: this._slug,
+                dataDir: this._dataDir,
+            };
+            for (const hook of this._initHooks) {
+                await hook(initCtx);
+            }
+        }
         // SIGTERM
         process.on('SIGTERM', () => this._shutdown());
         // Message loop
@@ -119,15 +158,19 @@ class ZroApp {
         }
     }
     _shutdown() {
-        if (this._ipc) {
-            const ack = protocol_1.IpcMessage.new('ShutdownAck', { status: 'ok' });
-            try {
-                this._ipc.send(ack);
-                this._ipc.close();
+        // Run module destroy hooks in reverse order (fire-and-forget)
+        const hooks = [...this._destroyHooks].reverse();
+        Promise.allSettled(hooks.map((h) => h())).finally(() => {
+            if (this._ipc) {
+                const ack = protocol_1.IpcMessage.new('ShutdownAck', { status: 'ok' });
+                try {
+                    this._ipc.send(ack);
+                    this._ipc.close();
+                }
+                catch { /* ignore */ }
             }
-            catch { /* ignore */ }
-        }
-        process.exit(0);
+            process.exit(0);
+        });
     }
     // ── Message dispatch ────────────────────────────────
     async _handleMessage(msg) {

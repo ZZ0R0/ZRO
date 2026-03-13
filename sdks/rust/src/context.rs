@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use zro_protocol::messages::{write_message, EventEmitPayload, EventTarget, IpcMessage};
-use zro_protocol::types::SessionInfo;
+use zro_protocol::types::{SessionInfo, UserProfile};
 
 /// Context provided to every command handler, event handler, and lifecycle hook.
 ///
@@ -73,6 +73,63 @@ impl AppContext {
         let mut w = self.writer.lock().await;
         write_message(&mut *w, &msg).await?;
         Ok(())
+    }
+
+    /// Emit an event to all apps within the current user session.
+    /// Useful for cross-app events like theme changes or clipboard updates.
+    pub async fn emit_to_session(
+        &self,
+        event: &str,
+        payload: serde_json::Value,
+    ) -> Result<(), crate::app::ZroSdkError> {
+        let emit = EventEmitPayload {
+            event: event.to_string(),
+            payload,
+            target: EventTarget::Session {
+                session_id: self.session.session_id.0.clone(),
+            },
+        };
+        let msg = IpcMessage::new("EventEmit", serde_json::to_value(emit)?);
+        let mut w = self.writer.lock().await;
+        write_message(&mut *w, &msg).await?;
+        Ok(())
+    }
+
+    /// Emit a system-wide event to every connected client of every app.
+    pub async fn emit_system(
+        &self,
+        event: &str,
+        payload: serde_json::Value,
+    ) -> Result<(), crate::app::ZroSdkError> {
+        let emit = EventEmitPayload {
+            event: event.to_string(),
+            payload,
+            target: EventTarget::System,
+        };
+        let msg = IpcMessage::new("EventEmit", serde_json::to_value(emit)?);
+        let mut w = self.writer.lock().await;
+        write_message(&mut *w, &msg).await?;
+        Ok(())
+    }
+
+    /// Get the user profile (if available).
+    pub fn profile(&self) -> Option<&UserProfile> {
+        self.session.profile.as_ref()
+    }
+
+    /// Get the current username.
+    pub fn username(&self) -> &str {
+        &self.session.username
+    }
+
+    /// Get the current user's role.
+    pub fn role(&self) -> &str {
+        &self.session.role
+    }
+
+    /// Get the current user's groups.
+    pub fn groups(&self) -> &[String] {
+        &self.session.groups
     }
 }
 

@@ -1,0 +1,65 @@
+{
+  "tasks": [
+    {
+      "id": "3e4fda88-66ca-4bee-8c3c-f701e5fe673e",
+      "title": "Bienvenue dans Tasks !",
+      "description": "Ceci est votre premier tableau Kanban.",
+      "status": "todo",
+      "priority": "medium",
+      "category": "default",
+      "due_date": null,
+      "created_at": "2026-03-13T03:19:41.991360662+00:00",
+      "updated_at": "2026-03-13T03:19:41.991376692+00:00",
+      "created_by": "system",
+      "position": 0
+    },
+    {
+      "id": "fe5a4eb4-072e-42d0-82e3-79c6e1a0577f",
+      "title": "test",
+      "description": "test",
+      "status": "todo",
+      "priority": "medium",
+      "category": "default",
+      "due_date": "2026-03-19",
+      "created_at": "2026-03-13T03:23:51.484955761+00:00",
+      "updated_at": "2026-03-13T03:23:51.484964938+00:00",
+      "created_by": "dev",
+      "position": 1
+    },
+    {
+      "id": "30c42c31-b3f5-4cb4-bd02-d370cc757027",
+      "title": "test",
+      "description": "test",
+      "status": "todo",
+      "priority": "medium",
+      "category": "default",
+      "due_date": "2026-03-19",
+      "created_at": "2026-03-13T03:23:51.486137181+00:00",
+      "updated_at": "2026-03-13T03:23:51.486139836+00:00",
+      "created_by": "dev",
+      "position": 2
+    }
+  ],
+  "categories": [
+    {
+      "id": "default",
+      "name": "Général",
+      "color": "#89b4fa"
+    },
+    {
+      "id": "bug",
+      "name": "Bug",
+      "color": "#f38ba8"
+    },
+    {
+      "id": "feature",
+      "name": "Fonctionnalité",
+      "color": "#a6e3a1"
+    },
+    {
+      "id": "docs",
+      "name": "Documentation",
+      "color": "#f9e2af"
+    }
+  ]
+}

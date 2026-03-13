@@ -14,3 +14,4 @@ pub mod ipc;
 pub mod gateway;
 pub mod hot_reload;
 pub mod storage;
+pub mod control;

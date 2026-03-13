@@ -1,426 +1,525 @@
 /*
- * Custom Shell — CSS Theme
- *
- * All variables are in :root so you can retheme the entire
- * desktop by changing a few values.  Every component references
- * these variables — no hard-coded colors elsewhere.
- *
- * Feel free to rename, add, or restructure everything below.
+ * Custom Shell — Complete Desktop Environment CSS
+ * All variables in :root — retheme by changing values.
  */
 
-/* ── Theme variables ─────────────────────────────── */
-
 :root {
-    /* Background & surfaces */
     --shell-bg:              #0f0f1a;
     --shell-surface:         #1a1a2e;
     --shell-surface-hover:   #252542;
-
-    /* Titlebar */
+    --shell-surface-active:  #2f2f55;
     --shell-titlebar:        #1e1e38;
     --shell-titlebar-active: #2a2a50;
-
-    /* Accent */
     --shell-accent:          #6c5ce7;
     --shell-accent-hover:    #7e70f0;
+    --shell-accent-dim:      rgba(108,92,231,0.15);
     --shell-danger:          #e74c3c;
-
-    /* Text */
+    --shell-success:         #2ecc71;
+    --shell-warning:         #f1c40f;
     --shell-text:            #e8e8f0;
     --shell-text-dim:        #7a7a9e;
     --shell-text-muted:      #50506e;
-
-    /* Taskbar */
-    --shell-taskbar-bg:      rgba(15, 15, 26, 0.92);
+    --shell-taskbar-bg:      rgba(15,15,26,0.92);
     --shell-taskbar-height:  48px;
-
-    /* Misc */
-    --shell-border:          rgba(255, 255, 255, 0.06);
-    --shell-shadow:          rgba(0, 0, 0, 0.5);
+    --shell-border:          rgba(255,255,255,0.06);
+    --shell-shadow:          rgba(0,0,0,0.5);
     --shell-radius:          8px;
     --shell-radius-lg:       14px;
+    --shell-anim:            200ms;
 }
 
-/* ── Reset ────────────────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 
-*, *::before, *::after {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--shell-bg);color:var(--shell-text);
+    overflow:hidden;height:100vh;width:100vw;
+    user-select:none;-webkit-user-select:none;
 }
 
-body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--shell-bg);
-    color: var(--shell-text);
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-    user-select: none;
-    -webkit-user-select: none;
+.hidden{display:none!important}
+
+/* ── Desktop ─────────────────────────────────────── */
+
+#desktop{
+    position:absolute;top:0;left:0;right:0;
+    bottom:var(--shell-taskbar-height);
+    background-size:cover;background-position:center;
+    background-repeat:no-repeat;transition:background-color 0.5s;
 }
 
-/* ── Desktop area ─────────────────────────────────── */
+/* ── Snap preview ────────────────────────────────── */
 
-#desktop {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    bottom: var(--shell-taskbar-height);
+#snap-preview{
+    position:fixed;z-index:9990;
+    background:var(--shell-accent-dim);
+    border:2px solid var(--shell-accent);
+    border-radius:var(--shell-radius);
+    pointer-events:none;
+    transition:all 0.15s ease-out;
 }
 
 /* ── Window ───────────────────────────────────────── */
 
-.window {
-    position: absolute;
-    background: var(--shell-surface);
-    border-radius: var(--shell-radius);
-    box-shadow: 0 8px 32px var(--shell-shadow), 0 0 0 1px var(--shell-border);
-    display: flex;
-    flex-direction: column;
-    min-width: 360px;
-    min-height: 240px;
-    overflow: hidden;
-    transition: box-shadow 0.2s ease;
-    /* Promote to own layer for smoother compositing */
-    contain: layout style;
+.window{
+    position:absolute;
+    background:var(--shell-surface);
+    border-radius:var(--shell-radius);
+    box-shadow:0 8px 32px var(--shell-shadow),0 0 0 1px var(--shell-border);
+    display:flex;flex-direction:column;
+    min-width:360px;min-height:240px;
+    overflow:hidden;contain:layout style;
 }
 
-/* ── Drag / Resize performance ────────────────────── */
+.window.wm-opening{animation:win-open var(--shell-anim) ease-out}
+.window.wm-closing{animation:win-close 150ms ease-in forwards;pointer-events:none}
 
-/* Block iframe pointer-events during drag & resize */
-.wm-dragging .window-content {
-    pointer-events: none !important;
+@keyframes win-open{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes win-close{from{transform:scale(1);opacity:1}to{transform:scale(.92);opacity:0}}
+
+@media(prefers-reduced-motion:reduce){
+    .window.wm-opening,.window.wm-closing{animation:none}
 }
 
-/* Kill transitions during drag to avoid jank */
-.wm-dragging .window {
-    transition: none !important;
+.wm-dragging .window-content{pointer-events:none!important}
+.wm-dragging .window{transition:none!important}
+
+.window.focused{box-shadow:0 12px 48px var(--shell-shadow),0 0 0 1px rgba(108,92,231,0.25)}
+
+.window.maximized{
+    top:0!important;left:0!important;
+    width:100%!important;height:100%!important;
+    border-radius:0;transition:none;
 }
 
-.window.focused {
-    box-shadow:
-        0 12px 48px var(--shell-shadow),
-        0 0 0 1px rgba(108, 92, 231, 0.25);
+.window.snapped{
+    border-radius:2px;
+    transition:left var(--shell-anim) ease-out,top var(--shell-anim) ease-out,
+               width var(--shell-anim) ease-out,height var(--shell-anim) ease-out;
 }
 
-.window.maximized {
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    border-radius: 0;
-}
-
-.window.minimized {
-    display: none;
-}
+.window.minimized{display:none}
 
 /* ── Titlebar ─────────────────────────────────────── */
 
-.window-titlebar {
-    display: flex;
-    align-items: center;
-    height: 38px;
-    background: var(--shell-titlebar);
-    padding: 0 12px;
-    cursor: move;
-    flex-shrink: 0;
-    gap: 8px;
+.window-titlebar{
+    display:flex;align-items:center;height:38px;
+    background:var(--shell-titlebar);
+    padding:0 12px;cursor:move;flex-shrink:0;gap:8px;
+}
+.window.focused .window-titlebar{background:var(--shell-titlebar-active)}
+
+.window-icon{font-size:14px;flex-shrink:0}
+
+.window-title{
+    flex:1;font-size:13px;font-weight:500;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 
-.window.focused .window-titlebar {
-    background: var(--shell-titlebar-active);
+.window-controls{display:flex;gap:6px}
+.window-controls button{
+    width:14px;height:14px;border:none;border-radius:50%;
+    cursor:pointer;padding:0;font-size:0;transition:filter .15s;
 }
+.window-controls button:hover{filter:brightness(1.3)}
+.btn-popout{background:#3498db}
+.btn-minimize{background:#f1c40f}
+.btn-maximize{background:#2ecc71}
+.btn-close{background:#e74c3c}
+.window:not(.focused) .window-controls button{background:var(--shell-text-muted)}
 
-.window-title {
-    flex: 1;
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.window-controls {
-    display: flex;
-    gap: 6px;
-}
-
-.window-controls button {
-    width: 14px;
-    height: 14px;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    padding: 0;
-    font-size: 0;           /* hide text, show dot */
-    transition: filter 0.15s;
-}
-
-.window-controls button:hover { filter: brightness(1.3); }
-
-.btn-popout   { background: #3498db; }
-.btn-minimize { background: #f1c40f; }
-.btn-maximize { background: #2ecc71; }
-.btn-close    { background: #e74c3c; }
-
-/* Unfocused → dim the dots */
-.window:not(.focused) .window-controls button {
-    background: var(--shell-text-muted);
-}
-
-/* ── Window content (iframe) ──────────────────────── */
-
-.window-content {
-    flex: 1;
-    border: none;
-    width: 100%;
-    height: 100%;
-    background: #fff;
-}
+.window-content{flex:1;border:none;width:100%;height:100%;background:#fff}
 
 /* ── Resize handles ───────────────────────────────── */
 
-.resize { position: absolute; }
+.resize{position:absolute}
+.resize-n{top:-4px;left:8px;right:8px;height:8px;cursor:n-resize}
+.resize-s{bottom:-4px;left:8px;right:8px;height:8px;cursor:s-resize}
+.resize-w{left:-4px;top:8px;bottom:8px;width:8px;cursor:w-resize}
+.resize-e{right:-4px;top:8px;bottom:8px;width:8px;cursor:e-resize}
+.resize-nw{top:-4px;left:-4px;width:14px;height:14px;cursor:nw-resize}
+.resize-ne{top:-4px;right:-4px;width:14px;height:14px;cursor:ne-resize}
+.resize-sw{bottom:-4px;left:-4px;width:14px;height:14px;cursor:sw-resize}
+.resize-se{bottom:-4px;right:-4px;width:14px;height:14px;cursor:se-resize}
 
-.resize-n  { top: -4px;    left: 8px;  right: 8px;  height: 8px; cursor: n-resize;  }
-.resize-s  { bottom: -4px; left: 8px;  right: 8px;  height: 8px; cursor: s-resize;  }
-.resize-w  { left: -4px;   top: 8px;   bottom: 8px; width: 8px;  cursor: w-resize;  }
-.resize-e  { right: -4px;  top: 8px;   bottom: 8px; width: 8px;  cursor: e-resize;  }
-.resize-nw { top: -4px;    left: -4px;  width: 14px; height: 14px; cursor: nw-resize; }
-.resize-ne { top: -4px;    right: -4px; width: 14px; height: 14px; cursor: ne-resize; }
-.resize-sw { bottom: -4px; left: -4px;  width: 14px; height: 14px; cursor: sw-resize; }
-.resize-se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: se-resize; }
+/* ── Context menus ────────────────────────────────── */
 
-/* ── Window context menu ─────────────────────────────── */
-
-.wm-context-menu {
-    position: fixed;
-    z-index: 100000;
-    min-width: 200px;
-    background: var(--shell-surface);
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius);
-    box-shadow: 0 8px 32px var(--shell-shadow);
-    padding: 4px 0;
-    user-select: none;
-    -webkit-user-select: none;
+.wm-context-menu,.ctx-menu{
+    position:fixed;z-index:100000;min-width:200px;
+    background:var(--shell-surface);border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);box-shadow:0 8px 32px var(--shell-shadow);
+    padding:4px 0;user-select:none;
 }
-
-.wm-ctx-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 14px;
-    font-size: 13px;
-    color: var(--shell-text);
-    cursor: pointer;
-    transition: background 0.1s;
+.wm-ctx-item,.ctx-item{
+    display:flex;align-items:center;gap:10px;
+    padding:7px 14px;font-size:13px;color:var(--shell-text);
+    cursor:pointer;transition:background .1s;
 }
-
-.wm-ctx-item:hover {
-    background: rgba(108, 92, 231, 0.15);
-}
-
-.wm-ctx-icon {
-    width: 18px;
-    text-align: center;
-    font-size: 14px;
-    opacity: 0.7;
-}
-
-.wm-ctx-sep {
-    height: 1px;
-    margin: 4px 8px;
-    background: var(--shell-border);
-}
+.wm-ctx-item:hover,.ctx-item:hover{background:var(--shell-accent-dim)}
+.wm-ctx-icon{width:18px;text-align:center;font-size:14px;opacity:.7}
+.wm-ctx-sep,.ctx-sep{height:1px;margin:4px 8px;background:var(--shell-border)}
 
 /* ── Taskbar ──────────────────────────────────────── */
 
-#taskbar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: var(--shell-taskbar-height);
-    background: var(--shell-taskbar-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    gap: 4px;
-    z-index: 10000;
-    border-top: 1px solid var(--shell-border);
+#taskbar{
+    position:fixed;bottom:0;left:0;right:0;
+    height:var(--shell-taskbar-height);
+    background:var(--shell-taskbar-bg);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    display:flex;align-items:center;padding:0 10px;gap:4px;
+    z-index:10000;border-top:1px solid var(--shell-border);
 }
 
-#taskbar-windows {
-    display: flex;
-    gap: 3px;
-    flex: 1;
-    overflow-x: auto;
-    scrollbar-width: none;
+#taskbar-windows{display:flex;gap:3px;flex:1;overflow-x:auto;scrollbar-width:none}
+#taskbar-windows::-webkit-scrollbar{display:none}
+
+.taskbar-spacer{flex:1}
+
+.taskbar-btn{
+    height:36px;min-width:36px;padding:0 12px;border:none;border-radius:6px;
+    background:transparent;color:var(--shell-text);cursor:pointer;
+    font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:6px;
+    transition:background .15s;
 }
-#taskbar-windows::-webkit-scrollbar { display: none; }
+.taskbar-btn:hover{background:var(--shell-surface-hover)}
+.taskbar-btn.active{background:var(--shell-surface-hover);box-shadow:inset 0 -2px 0 var(--shell-accent)}
 
-.taskbar-spacer { flex: 1; }
+.taskbar-launcher{flex-shrink:0}
 
-.taskbar-btn {
-    height: 36px;
-    min-width: 36px;
-    padding: 0 12px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--shell-text);
-    cursor: pointer;
-    font-size: 13px;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: background 0.15s;
+.taskbar-win-icon{font-size:14px}
+
+.taskbar-badge{
+    background:var(--shell-accent);color:#fff;font-size:10px;font-weight:600;
+    padding:1px 5px;border-radius:9px;min-width:16px;text-align:center;
 }
 
-.taskbar-btn:hover {
-    background: var(--shell-surface-hover);
+/* System tray */
+#system-tray{display:flex;gap:2px;margin-right:4px}
+
+.tray-indicator{
+    display:flex;align-items:center;gap:4px;padding:4px 8px;
+    border:none;border-radius:6px;background:transparent;
+    color:var(--shell-text-dim);cursor:pointer;font-size:12px;
+    transition:background .15s;position:relative;
+}
+.tray-indicator:hover{background:var(--shell-surface-hover);color:var(--shell-text)}
+
+.tray-icon{font-size:14px}
+.tray-value{font-size:11px;font-variant-numeric:tabular-nums}
+
+.tray-badge{
+    position:absolute;top:2px;right:2px;
+    background:var(--shell-danger);color:#fff;font-size:9px;font-weight:700;
+    min-width:14px;height:14px;border-radius:7px;text-align:center;
+    line-height:14px;padding:0 3px;
 }
 
-.taskbar-btn.active {
-    background: var(--shell-surface-hover);
-    box-shadow: inset 0 -2px 0 var(--shell-accent);
+#taskbar-clock{
+    display:flex;flex-direction:column;align-items:flex-end;
+    font-variant-numeric:tabular-nums;padding:0 12px;cursor:pointer;
 }
-
-.taskbar-badge {
-    background: var(--shell-accent);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 1px 5px;
-    border-radius: 9px;
-    min-width: 16px;
-    text-align: center;
-}
-
-#taskbar-clock {
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    color: var(--shell-text-dim);
-    padding: 0 12px;
-}
+#clock-time{font-size:13px;color:var(--shell-text);font-weight:500}
+#clock-date{font-size:10px;color:var(--shell-text-dim)}
 
 /* ── Launcher ─────────────────────────────────────── */
 
-#launcher {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    bottom: var(--shell-taskbar-height);
-    z-index: 9000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+#launcher{
+    position:fixed;top:0;left:0;right:0;bottom:var(--shell-taskbar-height);
+    z-index:9000;display:flex;align-items:center;justify-content:center;
+    animation:overlay-in var(--shell-anim) ease-out;
+}
+@keyframes overlay-in{from{opacity:0}to{opacity:1}}
+
+.launcher-backdrop{
+    position:absolute;inset:0;background:rgba(0,0,0,.5);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
 }
 
-#launcher.hidden { display: none; }
-
-.launcher-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+.launcher-panel{
+    position:relative;background:var(--shell-surface);
+    border-radius:var(--shell-radius-lg);
+    padding:1.5rem 2rem;width:580px;max-width:90vw;
+    max-height:75vh;overflow-y:auto;
+    box-shadow:0 12px 48px var(--shell-shadow);
+    display:flex;flex-direction:column;gap:14px;
 }
 
-.launcher-panel {
-    position: relative;
-    background: var(--shell-surface);
-    border-radius: var(--shell-radius-lg);
-    padding: 2rem 2.5rem;
-    min-width: 420px;
-    max-width: 640px;
-    max-height: 70vh;
-    overflow-y: auto;
-    box-shadow: 0 12px 48px var(--shell-shadow);
+#launcher-search{
+    width:100%;padding:10px 14px;
+    background:rgba(255,255,255,.06);border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);color:var(--shell-text);font-size:14px;
+    outline:none;transition:border-color .2s;
+}
+#launcher-search:focus{border-color:var(--shell-accent)}
+#launcher-search::placeholder{color:var(--shell-text-muted)}
+
+#launcher-categories{display:flex;gap:6px;flex-wrap:wrap}
+.cat-btn{
+    padding:5px 12px;border:1px solid var(--shell-border);border-radius:16px;
+    background:transparent;color:var(--shell-text-dim);font-size:12px;
+    cursor:pointer;transition:all .15s;
+}
+.cat-btn:hover{background:var(--shell-surface-hover);color:var(--shell-text)}
+.cat-btn.active{background:var(--shell-accent);color:#fff;border-color:var(--shell-accent)}
+
+#launcher-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+    gap:8px;min-height:100px;
 }
 
-.launcher-panel h2 {
-    text-align: center;
-    font-weight: 600;
-    font-size: 1.25rem;
-    margin-bottom: 1.5rem;
+.launcher-app{
+    background:rgba(255,255,255,.04);padding:14px 8px;
+    border-radius:var(--shell-radius);cursor:pointer;text-align:center;
+    transition:background .15s,transform .1s;outline:none;
+}
+.launcher-app:hover,.launcher-app.selected{
+    background:var(--shell-accent-dim);transform:translateY(-2px);
+}
+.launcher-app .app-icon{font-size:2rem;margin-bottom:4px}
+.launcher-app .app-name{font-weight:500;font-size:12px}
+
+#launcher-actions{
+    display:flex;gap:8px;justify-content:center;
+    padding-top:10px;border-top:1px solid var(--shell-border);
+}
+.launcher-action-btn{
+    padding:6px 16px;border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);background:transparent;
+    color:var(--shell-text-dim);font-size:12px;cursor:pointer;transition:all .15s;
+}
+.launcher-action-btn:hover{background:var(--shell-surface-hover);color:var(--shell-text)}
+
+/* ── Alt+Tab Switcher ─────────────────────────────── */
+
+#switcher{
+    position:fixed;inset:0;z-index:50000;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.4);backdrop-filter:blur(4px);
 }
 
-#launcher-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
+.switcher-panel{
+    display:flex;gap:12px;padding:16px;
+    background:var(--shell-surface);border-radius:var(--shell-radius-lg);
+    box-shadow:0 12px 48px var(--shell-shadow);max-width:80vw;overflow-x:auto;
 }
 
-.launcher-app {
-    background: rgba(255, 255, 255, 0.04);
-    padding: 1.1rem 0.8rem;
-    border-radius: var(--shell-radius);
-    cursor: pointer;
-    text-align: center;
-    transition: background 0.15s, transform 0.1s;
+.switcher-item{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:12px 16px;border-radius:var(--shell-radius);
+    min-width:100px;cursor:pointer;transition:background .1s;
+}
+.switcher-item.selected{background:var(--shell-accent-dim)}
+.switcher-item .sw-icon{font-size:28px}
+.switcher-item .sw-title{
+    font-size:11px;color:var(--shell-text-dim);white-space:nowrap;
+    max-width:100px;overflow:hidden;text-overflow:ellipsis;
 }
 
-.launcher-app:hover {
-    background: rgba(108, 92, 231, 0.12);
-    transform: translateY(-2px);
+/* ── Quick Settings ───────────────────────────────── */
+
+#quick-settings{
+    position:fixed;bottom:calc(var(--shell-taskbar-height) + 8px);right:8px;
+    width:300px;background:var(--shell-surface);
+    border-radius:var(--shell-radius-lg);
+    box-shadow:0 12px 48px var(--shell-shadow);
+    border:1px solid var(--shell-border);z-index:10001;
+    overflow:hidden;animation:slide-up .15s ease-out;
+}
+@keyframes slide-up{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+.qs-header{
+    padding:14px 16px;display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid var(--shell-border);font-weight:600;font-size:14px;
+}
+.qs-role-badge{
+    font-size:10px;padding:2px 8px;background:var(--shell-accent-dim);
+    color:var(--shell-accent);border-radius:10px;font-weight:500;
 }
 
-.launcher-app .app-icon {
-    font-size: 2rem;
-    margin-bottom: 6px;
+.qs-toggles{display:flex;gap:8px;padding:12px 16px}
+.qs-toggle{
+    flex:1;padding:8px;border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);background:transparent;
+    color:var(--shell-text-dim);font-size:12px;cursor:pointer;
+    transition:all .15s;text-align:center;
+}
+.qs-toggle:hover{background:var(--shell-surface-hover)}
+.qs-toggle.active{background:var(--shell-accent-dim);color:var(--shell-accent);border-color:var(--shell-accent)}
+
+.qs-metrics{padding:8px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qs-metric{
+    display:flex;justify-content:space-between;font-size:12px;
+    color:var(--shell-text-dim);padding:4px 0;
+}
+.qs-metric span:last-child{color:var(--shell-text);font-variant-numeric:tabular-nums}
+
+.qs-actions{padding:12px 16px;display:flex;gap:8px;border-top:1px solid var(--shell-border)}
+.qs-actions button{
+    flex:1;padding:7px;border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);background:transparent;
+    color:var(--shell-text-dim);font-size:11px;cursor:pointer;transition:all .15s;
+}
+.qs-actions button:hover{background:var(--shell-surface-hover);color:var(--shell-text)}
+
+/* ── Notification center ──────────────────────────── */
+
+#notif-center{
+    position:fixed;top:0;right:0;bottom:var(--shell-taskbar-height);
+    width:360px;max-width:100vw;
+    background:var(--shell-surface);
+    border-left:1px solid var(--shell-border);
+    box-shadow:-4px 0 24px var(--shell-shadow);z-index:10002;
+    display:flex;flex-direction:column;
+    animation:slide-in-right .2s ease-out;
+}
+@keyframes slide-in-right{from{transform:translateX(100%)}to{transform:translateX(0)}}
+
+.nc-header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 16px;border-bottom:1px solid var(--shell-border);
+    font-weight:600;font-size:14px;
+}
+.nc-header button{
+    padding:4px 12px;border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);background:transparent;
+    color:var(--shell-text-dim);font-size:11px;cursor:pointer;transition:all .15s;
+}
+.nc-header button:hover{background:var(--shell-surface-hover)}
+
+#nc-list{flex:1;overflow-y:auto;padding:8px}
+
+.nc-item{
+    padding:10px 12px;border-radius:var(--shell-radius);
+    margin-bottom:4px;cursor:pointer;transition:background .15s;
+    border:1px solid transparent;
+}
+.nc-item:hover{background:var(--shell-surface-hover)}
+.nc-item.unread{border-color:var(--shell-accent-dim)}
+
+.nc-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.nc-item-app{font-size:11px;color:var(--shell-accent);font-weight:500}
+.nc-item-time{font-size:10px;color:var(--shell-text-muted)}
+.nc-item-title{font-size:13px;font-weight:500}
+.nc-item-body{font-size:12px;color:var(--shell-text-dim);margin-top:2px}
+.nc-item-close{
+    float:right;background:none;border:none;color:var(--shell-text-muted);
+    cursor:pointer;font-size:14px;padding:0 4px;
+}
+.nc-item-close:hover{color:var(--shell-text)}
+
+.nc-empty{text-align:center;padding:40px 16px;color:var(--shell-text-muted);font-size:13px}
+
+/* ── Toast notifications ──────────────────────────── */
+
+#notifications{
+    position:fixed;top:16px;right:16px;z-index:20000;
+    display:flex;flex-direction:column;gap:8px;pointer-events:none;
 }
 
-.launcher-app .app-name {
-    font-weight: 500;
-    font-size: 13px;
+.notification{
+    pointer-events:auto;background:var(--shell-surface);
+    border:1px solid var(--shell-border);border-radius:var(--shell-radius);
+    padding:12px 18px;max-width:340px;
+    box-shadow:0 6px 24px var(--shell-shadow);animation:notif-in .25s ease-out;
+    cursor:pointer;
 }
+.notification .notif-icon{font-size:16px;margin-right:8px;float:left}
+.notification .notif-title{font-weight:600;font-size:13px;margin-bottom:2px}
+.notification .notif-body{font-size:12px;color:var(--shell-text-dim)}
 
-.launcher-app .app-desc {
-    font-size: 11px;
-    color: var(--shell-text-dim);
-    margin-top: 2px;
+@keyframes notif-in{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── Lock screen ──────────────────────────────────── */
+
+#lock-screen{
+    position:fixed;inset:0;z-index:99999;
+    display:flex;align-items:center;justify-content:center;
+    animation:fade-in .3s ease-out;
 }
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
 
-/* ── Notifications ────────────────────────────────── */
-
-#notifications {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 20000;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    pointer-events: none;
+.lock-bg{
+    position:absolute;inset:0;background:var(--shell-bg);
+    backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
 }
-
-.notification {
-    pointer-events: auto;
-    background: var(--shell-surface);
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius);
-    padding: 12px 18px;
-    max-width: 340px;
-    box-shadow: 0 6px 24px var(--shell-shadow);
-    animation: notif-in 0.25s ease-out;
-    cursor: pointer;
+.lock-content{
+    position:relative;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:12px;
 }
+.lock-clock{font-size:64px;font-weight:300;letter-spacing:-2px}
+.lock-date{font-size:16px;color:var(--shell-text-dim);margin-bottom:20px}
+.lock-avatar{font-size:48px;margin-bottom:4px}
+.lock-username{font-size:18px;font-weight:500}
 
-.notification .notif-title {
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 2px;
+.lock-form{display:flex;gap:8px;margin-top:16px}
+#lock-password{
+    width:250px;padding:10px 16px;
+    background:rgba(255,255,255,.08);border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);color:var(--shell-text);font-size:14px;
+    outline:none;
 }
+#lock-password:focus{border-color:var(--shell-accent)}
 
-.notification .notif-body {
-    font-size: 12px;
-    color: var(--shell-text-dim);
+.lock-submit{
+    padding:10px 20px;border:none;border-radius:var(--shell-radius);
+    background:var(--shell-accent);color:#fff;font-size:14px;
+    cursor:pointer;transition:background .15s;
 }
+.lock-submit:hover{background:var(--shell-accent-hover)}
 
-@keyframes notif-in {
-    from { transform: translateX(120%); opacity: 0; }
-    to   { transform: translateX(0);    opacity: 1; }
+.lock-error{color:var(--shell-danger);font-size:13px;margin-top:8px}
+
+/* ── Wallpaper picker ─────────────────────────────── */
+
+#wallpaper-picker{
+    position:fixed;inset:0;z-index:50001;
+    display:flex;align-items:center;justify-content:center;
 }
+.wp-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+
+.wp-panel{
+    position:relative;background:var(--shell-surface);
+    border-radius:var(--shell-radius-lg);padding:20px;
+    width:600px;max-width:90vw;max-height:75vh;overflow-y:auto;
+    box-shadow:0 12px 48px var(--shell-shadow);
+}
+.wp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.wp-header h3{font-size:16px;font-weight:600}
+.wp-close-btn{
+    background:none;border:none;color:var(--shell-text-dim);
+    font-size:18px;cursor:pointer;padding:4px 8px;
+}
+.wp-close-btn:hover{color:var(--shell-text)}
+
+.wp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+
+.wp-thumb{
+    aspect-ratio:16/10;border-radius:6px;
+    background-size:cover;background-position:center;
+    cursor:pointer;border:2px solid transparent;
+    transition:border-color .15s,transform .1s;
+}
+.wp-thumb:hover{transform:scale(1.04)}
+.wp-thumb.active{border-color:var(--shell-accent)}
+
+.wp-options{display:flex;gap:8px;align-items:center}
+.wp-option-btn{
+    padding:6px 14px;border:1px solid var(--shell-border);
+    border-radius:var(--shell-radius);background:transparent;
+    color:var(--shell-text-dim);font-size:12px;cursor:pointer;transition:all .15s;
+}
+.wp-option-btn:hover{background:var(--shell-surface-hover)}
+.wp-color-input{width:36px;height:28px;border:none;cursor:pointer;border-radius:4px;background:transparent}
+
+/* ── Workspace indicator ──────────────────────────── */
+
+#workspace-indicator{
+    display:flex;gap:4px;margin-left:8px;
+}
+.ws-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--shell-text-muted);cursor:pointer;
+    transition:all .15s;
+}
+.ws-dot.active{background:var(--shell-accent);transform:scale(1.3)}
+.ws-dot:hover{background:var(--shell-text-dim)}

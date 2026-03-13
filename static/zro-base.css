@@ -1,6 +1,13 @@
 /* zro-base.css — Shared CSS variables for consistent theming */
-:root {
-    /* Colors */
+/* ═══════════════════════════════════════════════════════════════
+   Multi-theme support via [data-theme] attribute.
+   Default: catppuccin-mocha (dark).
+   Switch themes: document.documentElement.setAttribute("data-theme", name);
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Theme: Catppuccin Mocha (default, dark) ───────────────────── */
+:root,
+[data-theme="catppuccin-mocha"] {
     --zro-bg-primary: #1e1e2e;
     --zro-bg-secondary: #313244;
     --zro-bg-surface: #45475a;
@@ -11,6 +18,109 @@
     --zro-error: #f38ba8;
     --zro-success: #a6e3a1;
     --zro-warning: #f9e2af;
+}
+
+/* ── Theme: Catppuccin Latte (light) ───────────────────────────── */
+[data-theme="catppuccin-latte"] {
+    --zro-bg-primary: #eff1f5;
+    --zro-bg-secondary: #ccd0da;
+    --zro-bg-surface: #bcc0cc;
+    --zro-text-primary: #4c4f69;
+    --zro-text-secondary: #6c6f85;
+    --zro-accent: #1e66f5;
+    --zro-accent-hover: #2a6ef5;
+    --zro-error: #d20f39;
+    --zro-success: #40a02b;
+    --zro-warning: #df8e1d;
+}
+
+/* ── Theme: Nord (dark) ────────────────────────────────────────── */
+[data-theme="nord"] {
+    --zro-bg-primary: #2e3440;
+    --zro-bg-secondary: #3b4252;
+    --zro-bg-surface: #434c5e;
+    --zro-text-primary: #eceff4;
+    --zro-text-secondary: #d8dee9;
+    --zro-accent: #88c0d0;
+    --zro-accent-hover: #8fbcbb;
+    --zro-error: #bf616a;
+    --zro-success: #a3be8c;
+    --zro-warning: #ebcb8b;
+}
+
+/* ── Theme: Dracula (dark) ─────────────────────────────────────── */
+[data-theme="dracula"] {
+    --zro-bg-primary: #282a36;
+    --zro-bg-secondary: #44475a;
+    --zro-bg-surface: #6272a4;
+    --zro-text-primary: #f8f8f2;
+    --zro-text-secondary: #bfbfbf;
+    --zro-accent: #bd93f9;
+    --zro-accent-hover: #ff79c6;
+    --zro-error: #ff5555;
+    --zro-success: #50fa7b;
+    --zro-warning: #f1fa8c;
+}
+
+/* ── Theme: Tokyo Night (dark) ─────────────────────────────────── */
+[data-theme="tokyo-night"] {
+    --zro-bg-primary: #1a1b26;
+    --zro-bg-secondary: #24283b;
+    --zro-bg-surface: #414868;
+    --zro-text-primary: #c0caf5;
+    --zro-text-secondary: #a9b1d6;
+    --zro-accent: #7aa2f7;
+    --zro-accent-hover: #7dcfff;
+    --zro-error: #f7768e;
+    --zro-success: #9ece6a;
+    --zro-warning: #e0af68;
+}
+
+/* ── Theme: Gruvbox Dark ───────────────────────────────────────── */
+[data-theme="gruvbox-dark"] {
+    --zro-bg-primary: #282828;
+    --zro-bg-secondary: #3c3836;
+    --zro-bg-surface: #504945;
+    --zro-text-primary: #ebdbb2;
+    --zro-text-secondary: #bdae93;
+    --zro-accent: #83a598;
+    --zro-accent-hover: #8ec07c;
+    --zro-error: #fb4934;
+    --zro-success: #b8bb26;
+    --zro-warning: #fabd2f;
+}
+
+/* ── Theme: Solarized Dark ─────────────────────────────────────── */
+[data-theme="solarized-dark"] {
+    --zro-bg-primary: #002b36;
+    --zro-bg-secondary: #073642;
+    --zro-bg-surface: #586e75;
+    --zro-text-primary: #fdf6e3;
+    --zro-text-secondary: #93a1a1;
+    --zro-accent: #268bd2;
+    --zro-accent-hover: #2aa198;
+    --zro-error: #dc322f;
+    --zro-success: #859900;
+    --zro-warning: #b58900;
+}
+
+/* ── Theme: Solarized Light ────────────────────────────────────── */
+[data-theme="solarized-light"] {
+    --zro-bg-primary: #fdf6e3;
+    --zro-bg-secondary: #eee8d5;
+    --zro-bg-surface: #93a1a1;
+    --zro-text-primary: #002b36;
+    --zro-text-secondary: #586e75;
+    --zro-accent: #268bd2;
+    --zro-accent-hover: #2aa198;
+    --zro-error: #dc322f;
+    --zro-success: #859900;
+    --zro-warning: #b58900;
+}
+
+/* ── Accent color override (can be customized per-user) ────────── */
+:root {
+    --zro-accent-text: #fff;
 
     /* Spacing */
     --zro-space-xs: 4px;
@@ -34,6 +144,14 @@
     /* Shadows */
     --zro-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --zro-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Smooth theme transitions ──────────────────────────────────── */
+:root {
+    transition:
+        background-color 300ms ease,
+        color 300ms ease,
+        border-color 300ms ease;
 }
 
 * {

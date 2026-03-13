@@ -8,6 +8,13 @@ import pytest
 from zro_sdk.protocol import IpcMessage, SessionInfo
 from zro_sdk.context import AppContext
 from zro_sdk.app import ZroApp
+from zro_sdk.module import (
+    ModuleInitContext,
+    ModuleMeta,
+    ModuleRegistrar,
+    ZroModule,
+    resolve_module_order,
+)
 
 
 # ── IpcMessage tests ─────────────────────────────────────────────
@@ -218,3 +225,220 @@ class TestHandlerCalling:
         ctx = AppContext(session=session, _app=app)
         result = await app._call_handler(whoami, ctx, {})
         assert result == "alice"
+
+
+# ── Module system tests ──────────────────────────────────────────
+
+
+class TestModuleMeta:
+    def test_defaults(self):
+        meta = ModuleMeta(name="test")
+        assert meta.name == "test"
+        assert meta.version == "0.1.0"
+        assert meta.description is None
+        assert meta.dependencies == []
+
+    def test_with_values(self):
+        meta = ModuleMeta(
+            name="kv",
+            version="1.0.0",
+            description="Key-value store",
+            dependencies=["auth"],
+        )
+        assert meta.name == "kv"
+        assert meta.version == "1.0.0"
+        assert meta.description == "Key-value store"
+        assert meta.dependencies == ["auth"]
+
+
+class TestModuleRegistrar:
+    def test_command_registration(self):
+        r = ModuleRegistrar()
+
+        @r.command("greet")
+        async def greet(ctx: AppContext, name: str):
+            return f"Hello, {name}!"
+
+        assert "greet" in r.commands
+        assert r.commands["greet"] is greet
+
+    def test_event_registration(self):
+        r = ModuleRegistrar()
+
+        @r.on_event("my:event")
+        async def handler(ctx: AppContext, data):
+            pass
+
+        assert "my:event" in r.event_handlers
+
+    def test_lifecycle_registration(self):
+        r = ModuleRegistrar()
+
+        @r.on("client:connected")
+        async def on_connect(ctx: AppContext):
+            pass
+
+        assert "client:connected" in r.lifecycle_handlers
+
+    def test_init_hook(self):
+        r = ModuleRegistrar()
+
+        @r.on_init
+        async def init(ctx: ModuleInitContext):
+            pass
+
+        assert len(r.init_hooks) == 1
+
+    def test_destroy_hook(self):
+        r = ModuleRegistrar()
+
+        @r.on_destroy
+        async def cleanup():
+            pass
+
+        assert len(r.destroy_hooks) == 1
+
+
+class TestZroModule:
+    def test_module_registration(self):
+        class GreetModule(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="greet")
+
+            def register(self, r):
+                @r.command("greet")
+                async def greet(ctx: AppContext):
+                    return "hello"
+
+        mod = GreetModule()
+        assert mod.meta.name == "greet"
+
+        registrar = ModuleRegistrar()
+        mod.register(registrar)
+        assert "greet" in registrar.commands
+
+    def test_app_module_method(self):
+        class TestMod(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="test")
+
+            def register(self, r):
+                @r.command("test_cmd")
+                async def test_cmd(ctx: AppContext):
+                    return {"ok": True}
+
+        app = ZroApp()
+        result = app.module(TestMod())
+        assert result is app
+        assert len(app._modules) == 1
+
+
+class TestModuleDependencyResolution:
+    def test_no_deps(self):
+        class A(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="a")
+
+            def register(self, r):
+                pass
+
+        class B(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="b")
+
+            def register(self, r):
+                pass
+
+        order = resolve_module_order([A(), B()])
+        assert len(order) == 2
+
+    def test_with_deps(self):
+        class A(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="a")
+
+            def register(self, r):
+                pass
+
+        class B(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="b", dependencies=["a"])
+
+            def register(self, r):
+                pass
+
+        modules = [B(), A()]  # B first, but depends on A
+        order = resolve_module_order(modules)
+        a_pos = order.index(1)  # A is at index 1
+        b_pos = order.index(0)  # B is at index 0
+        assert a_pos < b_pos
+
+    def test_chain_deps(self):
+        class A(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="a")
+
+            def register(self, r):
+                pass
+
+        class B(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="b", dependencies=["a"])
+
+            def register(self, r):
+                pass
+
+        class C(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="c", dependencies=["b"])
+
+            def register(self, r):
+                pass
+
+        modules = [C(), A(), B()]  # shuffled
+        order = resolve_module_order(modules)
+        a_pos = order.index(1)
+        b_pos = order.index(2)
+        c_pos = order.index(0)
+        assert a_pos < b_pos < c_pos
+
+    def test_circular_dep(self):
+        class A(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="a", dependencies=["b"])
+
+            def register(self, r):
+                pass
+
+        class B(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="b", dependencies=["a"])
+
+            def register(self, r):
+                pass
+
+        with pytest.raises(ValueError, match="Circular dependency"):
+            resolve_module_order([A(), B()])
+
+    def test_missing_dep(self):
+        class A(ZroModule):
+            @property
+            def meta(self):
+                return ModuleMeta(name="a", dependencies=["nonexistent"])
+
+            def register(self, r):
+                pass
+
+        with pytest.raises(ValueError, match="not registered"):
+            resolve_module_order([A()])

@@ -187,30 +187,28 @@ fn sha256_hex(content: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-/// Serve a file from disk with mode-aware cache headers and ETag support.
+/// Serve a file from disk with ETag-based cache revalidation.
 async fn serve_file_with_cache(
     path: &Path,
     content_type: &str,
-    mode: &RuntimeMode,
+    _mode: &RuntimeMode,
     request_headers: &HeaderMap,
 ) -> Response {
     match tokio::fs::read(path).await {
         Ok(content) => {
             let etag = format!("\"{}\"", sha256_hex(&content));
 
-            // ETag / If-None-Match support (production)
-            if *mode == RuntimeMode::Production {
-                if let Some(if_none_match) = request_headers.get(header::IF_NONE_MATCH) {
-                    if let Ok(val) = if_none_match.to_str() {
-                        if val == etag || val == "*" {
-                            let mut resp = StatusCode::NOT_MODIFIED.into_response();
-                            resp.headers_mut().insert(header::ETAG, etag.parse().unwrap());
-                            resp.headers_mut().insert(
-                                header::CACHE_CONTROL,
-                                "public, max-age=31536000, immutable".parse().unwrap(),
-                            );
-                            return resp;
-                        }
+            // ETag / If-None-Match support
+            if let Some(if_none_match) = request_headers.get(header::IF_NONE_MATCH) {
+                if let Ok(val) = if_none_match.to_str() {
+                    if val == etag || val == "*" {
+                        let mut resp = StatusCode::NOT_MODIFIED.into_response();
+                        resp.headers_mut().insert(header::ETAG, etag.parse().unwrap());
+                        resp.headers_mut().insert(
+                            header::CACHE_CONTROL,
+                            "no-cache".parse().unwrap(),
+                        );
+                        return resp;
                     }
                 }
             }
@@ -221,24 +219,22 @@ async fn serve_file_with_cache(
                 content_type.parse().unwrap_or_else(|_| "application/octet-stream".parse().unwrap()),
             );
 
-            match mode {
-                RuntimeMode::Development => {
-                    response.headers_mut().insert(
-                        header::CACHE_CONTROL,
-                        "no-store".parse().unwrap(),
-                    );
-                }
-                RuntimeMode::Production => {
-                    response.headers_mut().insert(
-                        header::CACHE_CONTROL,
-                        "public, max-age=31536000, immutable".parse().unwrap(),
-                    );
-                    response.headers_mut().insert(
-                        header::ETAG,
-                        etag.parse().unwrap(),
-                    );
-                }
-            }
+            // Always use ETag-based revalidation: browser caches but checks
+            // freshness on every request via If-None-Match (304 if unchanged).
+            // HTML files use no-store to always get fresh content.
+            let cache_policy = if content_type.starts_with("text/html") {
+                "no-store"
+            } else {
+                "no-cache"
+            };
+            response.headers_mut().insert(
+                header::CACHE_CONTROL,
+                cache_policy.parse().unwrap(),
+            );
+            response.headers_mut().insert(
+                header::ETAG,
+                etag.parse().unwrap(),
+            );
 
             response
         }

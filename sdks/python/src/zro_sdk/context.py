@@ -39,6 +39,36 @@ class AppContext:
         if self._app:
             await self._app._emit(event, payload, broadcast=True)
 
+    async def emit_to_session(self, event: str, payload: Any = None) -> None:
+        """Emit an event to all apps within the current user session."""
+        if self._app and self.session.session_id:
+            await self._app._emit(event, payload, target_session=self.session.session_id)
+
+    async def emit_system(self, event: str, payload: Any = None) -> None:
+        """Emit a system-wide event to every connected client."""
+        if self._app:
+            await self._app._emit(event, payload, system=True)
+
+    @property
+    def profile(self):
+        """Get the user profile (if available)."""
+        return self.session.profile
+
+    @property
+    def username(self) -> str:
+        """Get the current username."""
+        return self.session.username
+
+    @property
+    def role(self) -> str:
+        """Get the current user's role."""
+        return self.session.role
+
+    @property
+    def groups(self) -> list[str]:
+        """Get the current user's groups."""
+        return self.session.groups
+
     def state(self, state_type: type):
         """Retrieve the shared state object registered for the given type."""
         if self._app:

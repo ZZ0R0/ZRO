@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser — zro</title>
+    <link rel="stylesheet" href="/static/zro-base.css?v=1773378881">
+    <link rel="stylesheet" href="/browser/static/app.css?v=1773378881">
+</head>
+<body>
+    <div id="app">
+        <header id="toolbar">
+            <div class="nav-btns">
+                <button id="btn-back" title="Back">◀</button>
+                <button id="btn-forward" title="Forward">▶</button>
+                <button id="btn-reload" title="Reload">↻</button>
+            </div>
+            <div class="url-bar">
+                <input type="text" id="url-input" placeholder="Enter URL or search…" spellcheck="false">
+                <button id="btn-go" title="Go">→</button>
+            </div>
+            <div class="action-btns">
+                <button id="btn-bookmark" title="Bookmark">☆</button>
+                <button id="btn-bookmarks-panel" title="Bookmarks">📑</button>
+                <button id="btn-history-panel" title="History">🕛</button>
+            </div>
+        </header>
+        <div id="tabs-bar">
+            <div id="tabs-list"></div>
+            <button id="btn-new-tab" title="New Tab">+</button>
+        </div>
+        <main id="browser-content">
+            <div id="new-tab-page" class="visible">
+                <h1>New Tab</h1>
+                <div id="ntp-bookmarks" class="ntp-grid"></div>
+            </div>
+            <iframe id="web-frame" style="display:none" referrerpolicy="no-referrer"></iframe>
+            <div id="frame-error" class="hidden">
+                <div class="error-card">
+                    <div class="error-icon">🚫</div>
+                    <h2>This site cannot be displayed in a frame</h2>
+                    <p id="error-url"></p>
+                    <p class="error-hint">Many sites block iframe embedding for security reasons.</p>
+                    <button id="btn-open-external" class="btn-accent">Open in new tab ↗</button>
+                </div>
+            </div>
+        </main>
+        <!-- Panels -->
+        <aside id="bookmarks-panel" class="side-panel">
+            <div class="panel-header"><h3>Bookmarks</h3><button class="panel-close" data-close="bookmarks-panel">✕</button></div>
+            <div id="bookmarks-list" class="panel-list"></div>
+        </aside>
+        <aside id="history-panel" class="side-panel">
+            <div class="panel-header"><h3>History</h3><button id="btn-clear-history">Clear</button><button class="panel-close" data-close="history-panel">✕</button></div>
+            <div id="history-list" class="panel-list"></div>
+        </aside>
+    </div>
+    <script src="/static/zro-client.js?v=1773378881"></script>
+    <script src="/browser/static/app.js?v=1773378881"></script>
+</body>
+</html>

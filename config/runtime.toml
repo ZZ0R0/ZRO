@@ -2,7 +2,7 @@
 
 [server]
 host = "0.0.0.0"
-port = 8080
+port = 8090
 
 [apps]
 manifest_dir = "./apps"
@@ -25,3 +25,7 @@ format = "pretty"
 shutdown_timeout_seconds = 10
 health_check_interval_seconds = 5
 max_restart_attempts = 3
+
+[control]
+socket_path = "/tmp/zro/control.sock"
+ipc_dir = "/tmp/zro/ipc"

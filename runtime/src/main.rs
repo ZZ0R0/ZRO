@@ -1,4 +1,4 @@
-use zro_runtime::{config, auth, auth_provider, jwt, registry, supervisor, gateway, hot_reload, storage, permissions};
+use zro_runtime::{config, auth, auth_provider, jwt, registry, supervisor, gateway, hot_reload, storage, permissions, control};
 
 use anyhow::Result;
 
@@ -159,12 +159,69 @@ async fn main() -> Result<()> {
         }
     });
 
+    // 9b. Start control socket server (CLI ↔ Runtime)
+    let control_socket_path = config.control.socket_path.clone();
+    let _control_handle = {
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            match control::ControlServer::bind(&control_socket_path, state_clone).await {
+                Ok(server) => server.run().await,
+                Err(e) => tracing::warn!("Control socket disabled: {}", e),
+            }
+        })
+    };
+
     // 10. Start gateway
     let addr = format!("{}:{}", config.server.host, config.server.port);
     tracing::info!("Gateway listening on {}", addr);
 
     let router = gateway::router::build_router(state.clone());
     let listener = tokio::net::TcpListener::bind(&addr).await?;
+
+    // 10b. Notify systemd that we are ready (sd_notify READY=1)
+    let _ = sd_notify::notify(false, &[sd_notify::NotifyState::Ready]);
+    tracing::info!("Startup complete — ready to serve");
+
+    // 10c. Spawn SIGHUP handler for config reload
+    {
+        let state_for_sighup = state.clone();
+        tokio::spawn(async move {
+            let mut sighup = tokio::signal::unix::signal(
+                tokio::signal::unix::SignalKind::hangup()
+            ).expect("failed to register SIGHUP handler");
+            loop {
+                sighup.recv().await;
+                tracing::info!("SIGHUP received — reloading configuration");
+                // Reload users
+                match auth::load_users(&state_for_sighup.config) {
+                    Ok(users) => {
+                        tracing::info!("Users reloaded: {} user(s)", users.len());
+                    }
+                    Err(e) => tracing::warn!("Failed to reload users: {}", e),
+                }
+                // Reload permissions
+                let perms = permissions::PermissionsConfig::load("config/permissions.toml");
+                tracing::info!("Permissions reloaded ({} app rules)", perms.app_count());
+                let _ = sd_notify::notify(false, &[sd_notify::NotifyState::Reloading]);
+                let _ = sd_notify::notify(false, &[sd_notify::NotifyState::Ready]);
+            }
+        });
+    }
+
+    // 10d. Spawn systemd watchdog (if WATCHDOG_USEC is set)
+    {
+        let mut usec: u64 = 0;
+        if sd_notify::watchdog_enabled(false, &mut usec) {
+            tokio::spawn(async {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
+                loop {
+                    interval.tick().await;
+                    let _ = sd_notify::notify(false, &[sd_notify::NotifyState::Watchdog]);
+                }
+            });
+            tracing::debug!("Systemd watchdog enabled");
+        }
+    }
 
     // 11. Handle shutdown signals
     let shutdown = async {
@@ -178,6 +235,9 @@ async fn main() -> Result<()> {
 
     tracing::info!("Gateway stopped, shutting down backends...");
     supervisor::shutdown_all_backends(state).await;
+
+    // Clean up control socket
+    let _ = tokio::fs::remove_file(&config.control.socket_path).await;
 
     tracing::info!("zro runtime shutdown complete");
     Ok(())

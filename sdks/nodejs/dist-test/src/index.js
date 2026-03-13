@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IpcClient = exports.IpcMessage = exports.AppContext = exports.ZroApp = void 0;
+exports.DevModule = exports.StateModule = exports.IpcModule = exports.NotificationsModule = exports.LifecycleModule = exports.resolveModuleOrder = exports.ModuleRegistrar = exports.IpcClient = exports.IpcMessage = exports.AppContext = exports.ZroApp = void 0;
 var app_1 = require("./app");
 Object.defineProperty(exports, "ZroApp", { enumerable: true, get: function () { return app_1.ZroApp; } });
 var context_1 = require("./context");
@@ -9,3 +9,17 @@ var protocol_1 = require("./protocol");
 Object.defineProperty(exports, "IpcMessage", { enumerable: true, get: function () { return protocol_1.IpcMessage; } });
 var ipc_1 = require("./ipc");
 Object.defineProperty(exports, "IpcClient", { enumerable: true, get: function () { return ipc_1.IpcClient; } });
+var module_1 = require("./module");
+Object.defineProperty(exports, "ModuleRegistrar", { enumerable: true, get: function () { return module_1.ModuleRegistrar; } });
+Object.defineProperty(exports, "resolveModuleOrder", { enumerable: true, get: function () { return module_1.resolveModuleOrder; } });
+// Built-in modules
+var lifecycle_1 = require("./modules/lifecycle");
+Object.defineProperty(exports, "LifecycleModule", { enumerable: true, get: function () { return lifecycle_1.LifecycleModule; } });
+var notifications_1 = require("./modules/notifications");
+Object.defineProperty(exports, "NotificationsModule", { enumerable: true, get: function () { return notifications_1.NotificationsModule; } });
+var ipc_2 = require("./modules/ipc");
+Object.defineProperty(exports, "IpcModule", { enumerable: true, get: function () { return ipc_2.IpcModule; } });
+var state_1 = require("./modules/state");
+Object.defineProperty(exports, "StateModule", { enumerable: true, get: function () { return state_1.StateModule; } });
+var dev_1 = require("./modules/dev");
+Object.defineProperty(exports, "DevModule", { enumerable: true, get: function () { return dev_1.DevModule; } });
